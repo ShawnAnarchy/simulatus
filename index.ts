@@ -17,6 +17,7 @@ class StateMachine implements ClockInterface {
   annualSeigniorage: number;
   annualInfrationRate: number;
   proposals: Array<Proposal>;
+  domains: Array<string>;
   miscellaneousAdministrations: Array<Administration>;
   AofMedia: Administration;
   AofEducation: Administration;
@@ -27,10 +28,18 @@ class StateMachine implements ClockInterface {
   AofTEEManager: Administration;
   supremeJudges: Array<SupremeJudge>;
   facilitators: Array<Facilitator>;
-  professionals: Array<Professional>;
+  professionals: Map<string, Array<Professional>>;
 
 
   constructor(){
+    this.domains = [];
+    this.AofMedia = new Administration()
+    this.AofEducation = new Administration()
+    this.AofSurveillance = new Administration()
+    this.AofPolice = new Administration()
+    this.AofJurisdiction = new Administration()
+    this.AofKYC = new Administration()
+    this.AofTEEManager = new Administration()
   }
 
   payTax(amount){
@@ -38,6 +47,25 @@ class StateMachine implements ClockInterface {
   }
   withdrawWelfare(amount){
     this.treasury -= amount;
+  }
+  addDomain(name){
+    this.domains.push(name);
+  }
+  addCitizen(){
+    this.people.push(new Citizen())
+  }
+  removeCitizen(citizenId){
+    let index = this.people.map((c,i) => c.id == citizenId ? i : 0).reduce((s,i)=> s+i,0)
+    this.people.splice(index, 1);
+  }
+  addSupremeJudge(judge){
+    this.supremeJudges.push(judge)
+  }
+  addFacilitator(facilitators){
+    this.facilitators.push(facilitators)
+  }
+  addProfessional(domain, professional){
+    this.professionals[domain].push(professionals)
   }
 
   getPopulation(){
@@ -51,18 +79,20 @@ class StateMachine implements ClockInterface {
     if( !validationResult.code ) throw new Error(`DAO4N Error: Assumption viorated. ${validationResult.report}`)
 
     // TODO tick all actors
-    citizens.map(c=> c.tick() )
-    miscellaneousAdministrations.map(a=> a.tick() )
-    AofMedia.tick()
-    AofEducation.tick()
-    AofSurveillance.tick()
-    AofPolice.tick()
-    AofJurisdiction.tick()
-    AofKYC.tick()
-    AofTEEManager.tick()
-    supremeJudges.map(a=> a.tick() )
-    facilitators.map(a=> a.tick() )
-    professionals.map(a=> a.tick() )
+    this.people.map(c=> c.tick() )
+    this.miscellaneousAdministrations.map(a=> a.tick() )
+    this.AofMedia.tick()
+    this.AofEducation.tick()
+    this.AofSurveillance.tick()
+    this.AofPolice.tick()
+    this.AofJurisdiction.tick()
+    this.AofKYC.tick()
+    this.AofTEEManager.tick()
+    this.supremeJudges.map(a=> a.tick() )
+    this.facilitators.map(a=> a.tick() )
+    this.domains.map(d=>{
+      this.professionals[d].map(a=> a.tick() )
+    })
     // TODO each ticks refer this https://paper.dropbox.com/doc/--A94iOUxIv4si~XPY5jFo1TMKAg-OSm6HZnzqnEz61jbe0izX
 
 
@@ -83,9 +113,9 @@ class StateMachine implements ClockInterface {
   submitProposal(proposer){
     this.proposals.push(new Proposal(proposer, this))
   }
-  destroyProposal(proposalId){
+  removeProposal(proposalId){
     let index = this.proposals.map((p,i)=> p.id === proposalId ? i : 0).reduce(s,i=> s+i, 0)
-    this.proposals.splice(this.proposals, 1)
+    this.proposals.splice(index, 1)
   }
 }
 
@@ -105,15 +135,9 @@ const enum ProposalPhasees {
   FINAL_JUDGE = 'f',
   HEADCOUNT_EXCEEDED = 'h'
 }
-const enum Domains {
-  EARTH = 'e',
-  FIRE = 'f',
-  THUNDER = 't',
-  WIND = 'w',
-  LEAF = 'l'
-}
 class Proposal implements ClockInterface {
   s: StateMachine;
+  id:string;
   proposer: Citizen;
   facilitator?: Citizen;
   professionals: Array<Citizen>;
@@ -121,18 +145,19 @@ class Proposal implements ClockInterface {
   problemType: ProblemTypes;
   durationDays:number;
   spentDays:number;
-  representatives: Array<citizens>;
+  representatives: Array<Citizen>;
   representativeHeadcount: number;
   progressismDegree: number;
   humanrightsDegree: number;
 
   constructor(proposer, s){
-    this.s = s
+    this.s = s;
+    this.id = Random.uuid(40);
     this.proposer = proposer;
     this.facilitator = null;
     this.domains = [];
     this.professionals = [];
-    this.durationDays = this.getDurationDays()
+    this.durationDays = this.getDurationDays();
     this.spentDays = 0;
     this.representativeHeadcount = 30;
     this.progressismDegree = 30 + Random.number(0, 60)
@@ -221,7 +246,8 @@ class Proposal implements ClockInterface {
     this.facilitator = availableFacilitators[Random.number(0, availableFacilitators.length-1)]
   }
   pickDomains(){
-    this.domains = domains;
+    let rand = Random.number()
+    this.domains = [];
   }
   pickProfessionals(){
     this.s.pickProfessionals(this)
@@ -243,6 +269,7 @@ enum LifeStage {
 }
 class Citizen implements ClockInterface {
   s: StateMachine;
+  id: string;
   annualSalary: number;
   intelligence: number;
   isSocioPath: bool;
@@ -252,6 +279,7 @@ class Citizen implements ClockInterface {
 
   constructor(s){
     this.s = s;
+    this.id = Random.uuid(40)
     this.annualSalary = 0;
     this.IQ = 30 + Random.number(0, 60);
     this.ConspiracyPreference = 100 - this.IQ + Random.number(0, 10) - Random.number(0, 10);
@@ -263,6 +291,7 @@ class Citizen implements ClockInterface {
       (this.progressismPreference > 50) ? 50 :
       (this.progressismPreference > 40) ? 60 : 70;
     this.biologicallyCanBePregnant = !!Random.number(0, 1)
+
   }
   tick(){
     this.age += 3/365
@@ -273,6 +302,10 @@ class Citizen implements ClockInterface {
     this.getWelfare(validationResult)
     this.activePoliticalAction(validationResult)
     this.passivePoliticalAction(validationResult)
+    
+    if(validationResult.code === LifeStage.DEATH){
+      this.s.removeCitizen(this.id)
+    }
   }
   validate(){
     if (this.age > this.lifetime) {
@@ -371,10 +404,10 @@ class Citizen implements ClockInterface {
       case LifeStage.DEATH:
         welfareAmount = 0
         return;
-
-      this.annualSalary = this.annualSalary + welfareAmount
-      this.s.withdrawWelfare(welfareAmount)
     }
+    this.annualSalary = this.annualSalary + welfareAmount
+    this.s.withdrawWelfare(welfareAmount)
+
   }
   activePoliticalAction(validationResult){
     switch(validationResult.code){
@@ -388,9 +421,9 @@ class Citizen implements ClockInterface {
               this.s.submitProposal(this)
               //TODO new Proposal(this)
               //TODO IQ of proposer is important for the initial judge
-            } else {}
-          } else {}
-        } else {}
+            }
+          }
+        }
         return;
       case LifeStage.DEATH:
         return;
@@ -437,7 +470,7 @@ class Administration implements ClockInterface {
   headCount: number;
 
   constructor(){
-    this.id = Random.number(0, 1000000000000);
+    this.id = Random.uuid(40);
     this.headCount = 8 + Random.number(0, 6);
     this.monthlyBudget = this.headCount
       .map(_=> 3000 + Random.number(0, 2000) )
@@ -450,3 +483,29 @@ class Administration implements ClockInterface {
   }
 
 }
+
+(function(){
+  let s = new StateMachine();
+  for(var i=0; i<64000; i++){
+    s.addCitizen()
+  }
+  s.addDomain('finance')
+  s.addDomain('military')
+  s.addDomain('publicSafety')
+  s.addDomain('physics')
+  s.addDomain('biology')
+  for(var i=0; i<100; i++){
+    s.addFacilitator(s.people[Random.number(0, s.people.length-1)])
+  }
+  for(var i=0; i<15; i++){
+    s.addSupremeJudge(s.people[Random.number(0, s.people.length-1)])
+  }
+  for(var i=0; i<50; i++){
+    for(var j=0; j<s.domains.length; j++){
+      s.addProfessional(s.domains[j], s.people[Random.number(0, s.people.length-1)])
+    }
+  }
+  for(var i=0; i<120; i++){
+    s.tick();
+  }
+})()
