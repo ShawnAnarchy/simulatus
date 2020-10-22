@@ -2,6 +2,7 @@
 exports.__esModule = true;
 exports.stringify = exports.trace = exports.shuffle = void 0;
 var fs = require("fs");
+var childProcess = require("child_process");
 function shuffle(array) {
     var currentIndex = array.length, temporaryValue, randomIndex;
     // While there remain elements to shuffle...
@@ -23,9 +24,16 @@ function trace() {
         args[_i] = arguments[_i];
     }
     var str = "";
-    if (args.length > 0)
+    if (args.length > 1) {
         str = args.map(function (o) { return stringify(o); }).join(", ");
-    fs.writeFileSync("./logs/" + Date.now(), "{" + str + "}");
+        str = "{" + str + "}";
+    }
+    else if (args.length === 1) {
+        str = stringify(args[0]);
+    }
+    var now = Date.now();
+    fs.writeFileSync("./logs/" + now, str);
+    childProcess.execSync("cat logs/" + now + " | jq . > logs/" + now + ".json && rm logs/" + now);
 }
 exports.trace = trace;
 function stringify(circ) {

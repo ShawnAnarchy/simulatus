@@ -1,5 +1,5 @@
 import * as fs from 'fs';
-
+import * as childProcess from 'child_process'
 export function shuffle(array) {
   var currentIndex = array.length, temporaryValue, randomIndex;
 
@@ -21,9 +21,16 @@ export function shuffle(array) {
 
 export function trace(...args:any[]):void {
   let str:string = "";
-  if (args.length > 0)
-      str = args.map(o=> stringify(o) ).join(", ");
-  fs.writeFileSync(`./logs/${Date.now()}`, "{" + str + "}");
+  if (args.length > 1) {
+    str = args.map(o=> stringify(o) ).join(", ");
+    str = "{" + str + "}"
+  } else if (args.length === 1) {
+    str = stringify(args[0])
+  }
+
+  let now = Date.now()
+  fs.writeFileSync(`./logs/${now}`,  str);
+  childProcess.execSync(`cat logs/${now} | jq . > logs/${now}.json && rm logs/${now}`)
 }
 
 export function stringify(circ){
