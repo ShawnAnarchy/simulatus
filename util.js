@@ -1,7 +1,7 @@
 "use strict";
 exports.__esModule = true;
-exports.trace = exports.shuffle = void 0;
-var fs = require("ts-fs");
+exports.stringify = exports.trace = exports.shuffle = void 0;
+var fs = require("fs");
 function shuffle(array) {
     var currentIndex = array.length, temporaryValue, randomIndex;
     // While there remain elements to shuffle...
@@ -24,7 +24,24 @@ function trace() {
     }
     var str = "";
     if (args.length > 0)
-        str = args.map(function (o) { return JSON.stringify(o); }).join(", ");
+        str = args.map(function (o) { return stringify(o); }).join(", ");
     fs.writeFileSync("./logs/" + Date.now(), "{" + str + "}");
 }
 exports.trace = trace;
+function stringify(circ) {
+    // Note: cache should not be re-used by repeated calls to JSON.stringify.
+    var cache = [];
+    var res = JSON.stringify(circ, function (key, value) {
+        if (typeof value === 'object' && value !== null) {
+            // Duplicate reference found, discard key
+            if (cache.includes(value))
+                return;
+            // Store value in our collection
+            cache.push(value);
+        }
+        return value;
+    });
+    cache = null; // Enable garbage collection
+    return res;
+}
+exports.stringify = stringify;

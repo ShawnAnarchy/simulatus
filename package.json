@@ -4,6 +4,7 @@
   "description": "A democracy simulator for the DAO<sub>4</sub>N.",
   "main": "index.js",
   "dependencies": {
+    "@types/node": "^14.14.2",
     "immutable": "^4.0.0-rc.12",
     "random.ts": "^2.0.1",
     "ts-fs": "^0.1.0",

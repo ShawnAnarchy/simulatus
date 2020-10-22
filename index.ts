@@ -1,5 +1,6 @@
 import * as Random from 'random.ts'
 import * as Util from './util'
+let trace = Util.trace
 
 const TICKING_TIME = 0.5
 
@@ -38,6 +39,7 @@ class StateMachine implements ClockInterface {
     this.people = [];
     this.treasury = 0;
     this.annualRevenue = 0;
+    this.proposals = [];
     this.domains = [];
     this.miscellaneousAdministrations = [];
     this.AofMedia = new Administration();
@@ -327,6 +329,7 @@ class Citizen implements ClockInterface {
   constructor(s){
     this.s = s;
     this.id = Random.uuid(40)
+    this.age = 50 + Random.number(0, 30) - Random.number(0, 50);
     this.annualSalary = 0;
     this.IQ = 30 + Random.number(0, 60);
     this.conspiracyPreference = 100 - this.IQ + Random.number(0, 10) - Random.number(0, 10);

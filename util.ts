@@ -1,4 +1,4 @@
-import * as fs from 'ts-fs'
+import * as fs from 'fs';
 
 export function shuffle(array) {
   var currentIndex = array.length, temporaryValue, randomIndex;
@@ -22,6 +22,23 @@ export function shuffle(array) {
 export function trace(...args:any[]):void {
   let str:string = "";
   if (args.length > 0)
-      str = args.map(o=> JSON.stringify(o) ).join(", ");
+      str = args.map(o=> stringify(o) ).join(", ");
   fs.writeFileSync(`./logs/${Date.now()}`, "{" + str + "}");
+}
+
+export function stringify(circ){
+  // Note: cache should not be re-used by repeated calls to JSON.stringify.
+  var cache = [];
+  let res =JSON.stringify(circ, (key, value) => {
+    if (typeof value === 'object' && value !== null) {
+      // Duplicate reference found, discard key
+      if (cache.includes(value)) return;
+
+      // Store value in our collection
+      cache.push(value);
+    }
+    return value;
+  });
+  cache = null; // Enable garbage collection
+  return res;
 }
