@@ -111,8 +111,8 @@ class StateMachine implements ClockInterface {
       report: ""
     }
   }
-  submitProposal(proposer){
-    this.proposals.push(new Proposal(proposer, this))
+  submitProposal(proposer, problemType){
+    this.proposals.push(new Proposal(proposer, this, problemType))
   }
   removeProposal(proposalId){
     let index = this.proposals.map((p,i)=> p.id === proposalId ? i : 0).reduce(s,i=> s+i, 0)
@@ -127,14 +127,15 @@ const enum ProblemTypes {
   HEAVY = 'h',
   VARIABLE_UPDATE = 'vu'
 }
-const enum ProposalPhasees {
+const enum ProposalPhases {
   INITIAL_JUDGE = 'i',
   FACILITATOR_ASSIGNMENT = 'fa',
   DOMAIN_ASSIGNMENT = 'da',
   PROFESSIONAL_ASSIGNMENT = 'pa',
   DELIBERATION = 'd',
   FINAL_JUDGE = 'f',
-  HEADCOUNT_EXCEEDED = 'h'
+  HEADCOUNT_EXCEEDED = 'h',
+  UNKNOWN_ERROR = "ue"
 }
 class Proposal implements ClockInterface {
   s: StateMachine;
@@ -151,9 +152,10 @@ class Proposal implements ClockInterface {
   progressismDegree: number;
   humanrightsDegree: number;
 
-  constructor(proposer, s){
+  constructor(proposer, s, problemType){
     this.s = s;
     this.id = Random.uuid(40);
+    this.problemType = problemType;
     this.proposer = proposer;
     this.facilitator = null;
     this.domains = [];
@@ -167,7 +169,7 @@ class Proposal implements ClockInterface {
     this.vestedMonthlyBudget = this.administrationToBeCreated.monthlyBudget
   }
   getDurationDays(){
-    switch (this.problemTypes) {
+    switch (this.problemType) {
       case ProblemTypes.ASSIGNMENT:
         return 14;
       case ProblemTypes.DISMISSAL:
@@ -185,7 +187,7 @@ class Proposal implements ClockInterface {
     let context = this.validate()
     
     switch(context.code){
-      case ProposalPhasees.FINAL_JUDGE:
+      case ProposalPhases.FINAL_JUDGE:
         let forCount = this.representatives.filter(r=>{
           let res = false;
           if( r.humanrightsPreference < 50 && r.progressismPreference > this.progressismPreference ) {
@@ -201,21 +203,21 @@ class Proposal implements ClockInterface {
           this.s.removeProposal(this.id)
         }
         return;
-      case ProposalPhasees.INITIAL_JUDGE:
+      case ProposalPhases.INITIAL_JUDGE:
         if(this.proposer.IQ > 50){
           // just tick if proposal is pseudo-reasonable
         } else {
           this.s.removeProposal(this.id)
         }
         return;
-      case ProposalPhasees.FACILITATOR_ASSIGNMENT:
+      case ProposalPhases.FACILITATOR_ASSIGNMENT:
         let f = this.s.facilitators.filter(f=> !f.isBusy )
         this.facilitator = f[Random.number(0, f.length-1)]
         return;
-      case ProposalPhasees.DOMAIN_ASSIGNMENT:
+      case ProposalPhases.DOMAIN_ASSIGNMENT:
         // this.domains = this.s.domains.sample(Random.number(0, this.s.domains.length-1))
         return;
-      case ProposalPhasees.PROFESSIONAL_ASSIGNMENT:
+      case ProposalPhases.PROFESSIONAL_ASSIGNMENT:
         /*
         this.domains.map(d=>{
           let p = this.s.professionals[d].filter(p=> !p.isBusy )
@@ -228,9 +230,9 @@ class Proposal implements ClockInterface {
        }
        */
         return;
-      case ProposalPhasees.DELIBERATION:
+      case ProposalPhases.DELIBERATION:
         return;
-      case ProposalPhasees.HEADCOUNT_EXCEEDED:
+      case ProposalPhases.HEADCOUNT_EXCEEDED:
         return;
     }
 
@@ -238,31 +240,34 @@ class Proposal implements ClockInterface {
   }
   validate(){
     if(this.spentDays === 0) {
-      return { code: ProposalPhasees.INITIAL_JUDGE, report: "" }
+      return { code: ProposalPhases.INITIAL_JUDGE, report: "" }
     } else if(0 < this.spentDays && !this.facilitator) {
-      return { code: ProposalPhasees.FACILITATOR_ASSIGNMENT, report: "" }
+      return { code: ProposalPhases.FACILITATOR_ASSIGNMENT, report: "" }
     } else if(!!this.facilitator && !this.domains) {
-      return { code: ProposalPhasees.DOMAIN_ASSIGNMENT, report: "" }
+      return { code: ProposalPhases.DOMAIN_ASSIGNMENT, report: "" }
     } else if(!!this.facilitator && !!this.domains && !this.professionals) {
-      return { code: ProposalPhasees.PROFESSIONAL_ASSIGNMENT, report: "" }
+      return { code: ProposalPhases.PROFESSIONAL_ASSIGNMENT, report: "" }
     } else if(!!this.facilitator && !!this.domains && !!this.professionals) {
-      return { code: ProposalPhasees.DELIBERATION, report: "" }  
+      return { code: ProposalPhases.DELIBERATION, report: "" }  
     } else if(this.spentDays === this.durationDays) {
-      return { code: ProposalPhasees.FINAL_JUDGE, report: "" }
+      return { code: ProposalPhases.FINAL_JUDGE, report: "" }
     } else if(this.representatives.length > this.representativeHeadcount) {
       return {
-        code: ProposalPhasees.HEADCOUNT_EXCEEDED,
+        code: ProposalPhases.HEADCOUNT_EXCEEDED,
         report: `this.representatives.length=${this.representatives.length} and this.representativeHeadcount=${this.representativeHeadcount}`
       }  
     } else {
+      return {
+        code: ProposalPhases.UNKNOWN_ERROR,
+        report: `Proposal.validate(): Unknown error.`
+      }  
   
     }
-    //TODO check duration and spentDays 
   }
   initialJudge(){
-    if(this.status === ProposalPhasees.INITIAL_JUDGE){
+    if(this.status === ProposalPhases.INITIAL_JUDGE){
       if(this.proposer.IQ > 50) {
-        this.status = ProposalPhasees.FACILITATOR_ASSIGNMENT
+        this.status = ProposalPhases.FACILITATOR_ASSIGNMENT
         return;
       } else {
         this.s.destroyProposal(this.id)
@@ -446,7 +451,7 @@ class Citizen implements ClockInterface {
         } else {
           if(this.annualSalary/12 > 5000 || this.IQ > 55) {
             if(Random.number(0, 365/3) === 0){
-              this.s.submitProposal(this)
+              this.s.submitProposal(this, ProblemTypes.NORMAL)
             }
           }
         }
