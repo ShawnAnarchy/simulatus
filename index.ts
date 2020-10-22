@@ -1,4 +1,5 @@
 import * as Random from 'random.ts'
+import * as Util from './util'
 const TICKING_TIME = 0.5
 
 type ValidationResult = {
@@ -28,19 +29,25 @@ class StateMachine implements ClockInterface {
   AofKYC: Administration;
   AofTEEManager: Administration;
   supremeJudges: Array<SupremeJudge>;
-  facilitators: Array<Facilitator>;
+  facilitators: Array<Facilitator>;//TODO Map<string, Facilitator>
   professionals: Map<string, Array<Professional>>;
 
 
   constructor(){
+    this.people = [];
+    this.treasury = 0;
+    this.annualRevenue = 0;
     this.domains = [];
-    this.AofMedia = new Administration()
-    this.AofEducation = new Administration()
-    this.AofSurveillance = new Administration()
-    this.AofPolice = new Administration()
-    this.AofJurisdiction = new Administration()
-    this.AofKYC = new Administration()
-    this.AofTEEManager = new Administration()
+    this.AofMedia = new Administration();
+    this.AofEducation = new Administration();
+    this.AofSurveillance = new Administration();
+    this.AofPolice = new Administration();
+    this.AofJurisdiction = new Administration();
+    this.AofKYC = new Administration();
+    this.AofTEEManager = new Administration();
+    this.supremeJudges = [];
+    this.facilitators = [];
+    this.professionals = new Map<string,Array<Professional>>();
   }
 
   payTax(amount){
@@ -49,11 +56,12 @@ class StateMachine implements ClockInterface {
   withdrawWelfare(amount){
     this.treasury -= amount;
   }
-  addDomain(name){
+  addDomain(name:string){
     this.domains.push(name);
+    this.professionals[name] = [];
   }
   addCitizen(){
-    this.people.push(new Citizen())
+    this.people.push(new Citizen(this))
   }
   removeCitizen(citizenId){
     let index = this.people.map((c,i) => c.id == citizenId ? i : 0).reduce((s,i)=> s+i,0)
@@ -66,7 +74,7 @@ class StateMachine implements ClockInterface {
     this.facilitators.push(facilitators)
   }
   addProfessional(domain, professional){
-    this.professionals[domain].push(professionals)
+    this.professionals[domain].push(professional)
   }
 
   getPopulation(){
@@ -107,7 +115,7 @@ class StateMachine implements ClockInterface {
     // TODO check deregistration rate
 
     return {
-      code: true,
+      code: "",
       report: ""
     }
   }
@@ -115,7 +123,7 @@ class StateMachine implements ClockInterface {
     this.proposals.push(new Proposal(proposer, this, problemType))
   }
   removeProposal(proposalId){
-    let index = this.proposals.map((p,i)=> p.id === proposalId ? i : 0).reduce(s,i=> s+i, 0)
+    let index = this.proposals.map((p,i)=> p.id === proposalId ? i : 0).reduce((s,i)=> s+i, 0)
     this.proposals.splice(index, 1)
   }
 }
@@ -139,11 +147,11 @@ const enum ProposalPhases {
 }
 class Proposal implements ClockInterface {
   s: StateMachine;
-  id:string;
+  id: string;
   proposer: Citizen;
   facilitator?: Citizen;
   professionals: Array<Citizen>;
-  domains: Array<Domains>
+  domains: Array<string>
   problemType: ProblemTypes;
   durationDays:number;
   spentDays:number;
@@ -151,6 +159,8 @@ class Proposal implements ClockInterface {
   representativeHeadcount: number;
   progressismDegree: number;
   humanrightsDegree: number;
+  administrationToBeCreated: Administration;
+  vestedMonthlyBudget: number;
 
   constructor(proposer, s, problemType){
     this.s = s;
@@ -190,14 +200,14 @@ class Proposal implements ClockInterface {
       case ProposalPhases.FINAL_JUDGE:
         let forCount = this.representatives.filter(r=>{
           let res = false;
-          if( r.humanrightsPreference < 50 && r.progressismPreference > this.progressismPreference ) {
+          if( r.humanrightsPreference < 50 && r.progressismPreference > this.progressismDegree ) {
             res = true
-          } else if ( r.progressismPreference > this.progressismPreference && r.humanrightsPreference > this.humanrightsDegree ) {
+          } else if ( r.progressismPreference > this.progressismDegree && r.humanrightsPreference > this.humanrightsDegree ) {
             res = true
           }
           return res;
         }).length
-        if(forCount > representatives.length/2){
+        if(forCount > this.representatives.length/2){
           this.s.miscellaneousAdministrations.push(this.administrationToBeCreated)
         } else {
           this.s.removeProposal(this.id)
@@ -215,22 +225,16 @@ class Proposal implements ClockInterface {
         this.facilitator = f[Random.number(0, f.length-1)]
         return;
       case ProposalPhases.DOMAIN_ASSIGNMENT:
-        // this.domains = this.s.domains.sample(Random.number(0, this.s.domains.length-1))
+        this.pickDomains()
         return;
       case ProposalPhases.PROFESSIONAL_ASSIGNMENT:
-        /*
-        this.domains.map(d=>{
-          let p = this.s.professionals[d].filter(p=> !p.isBusy )
-          this.professionals.push( p[Random.number(0, p.length-1)] )
-        })
-        */
-       /* TODO
-       class CorruptionResistantOfficer extends Citizen {
-         isBusy: bool;
-       }
-       */
+        this.pickProfessionals()
         return;
       case ProposalPhases.DELIBERATION:
+        let teachers = [this.facilitator].concat(this.professionals)
+        let avgTeacherIQ = teachers.map(t=> t.IQ ).reduce((s,i)=> s+i ,0)/teachers.length
+        let dailyEffect = (avgTeacherIQ - 50)/this.durationDays
+        this.representatives = this.representatives.map(r=> r.affectByDeliberation(dailyEffect) )
         return;
       case ProposalPhases.HEADCOUNT_EXCEEDED:
         return;
@@ -264,28 +268,28 @@ class Proposal implements ClockInterface {
   
     }
   }
-  initialJudge(){
-    if(this.status === ProposalPhases.INITIAL_JUDGE){
-      if(this.proposer.IQ > 50) {
-        this.status = ProposalPhases.FACILITATOR_ASSIGNMENT
-        return;
-      } else {
-        this.s.destroyProposal(this.id)
-      }
-    } else {
-      console.error('Proposal.initialJudge: wrong phase of proposal')
-    }
-  }
   pickFacilitator(){
-    let availableFacilitators = this.s.facilitators.filter(f=> !f.isBusy )
-    this.facilitator = availableFacilitators[Random.number(0, availableFacilitators.length-1)]
+    let candidates = this.s.facilitators.filter(f=> !f.isBusy )
+    let randIndex = Random.number(0, candidates.length-1)
+    let selectedFacilitator = candidates[randIndex]
+    selectedFacilitator.isBusy = true
+    this.s.facilitators[randIndex] = selectedFacilitator
+    this.facilitator = selectedFacilitator
   }
   pickDomains(){
-    let rand = Random.number()
-    this.domains = [];
+    let rand = Random.number(0, this.s.domains.length-1);
+    let shuffledDomains = Util.shuffle(this.s.domains);
+    [...Array(rand)].map((x,i)=> this.domains.push(shuffledDomains[i])  );
   }
   pickProfessionals(){
-    this.s.pickProfessionals(this)
+    this.domains.map(d=>{
+      let candidates = this.s.professionals[d].filter(p=> !p.isBusy )
+      let randIndex = Random.number(0, candidates.length-1)
+      let selectedProfessional = candidates[randIndex]
+      selectedProfessional.isBusy = true;
+      this.s.professionals[d][randIndex] = selectedProfessional;
+      this.professionals.push( selectedProfessional )
+    })
   }
   deliberation(){
     this.progressismDegree += Random.number(0, 10) - Random.number(0, 5)
@@ -306,10 +310,15 @@ class Citizen implements ClockInterface {
   s: StateMachine;
   id: string;
   annualSalary: number;
-  intelligence: number;
-  isSocioPath: bool;
+  IQ: number;
+  conspiracyPreference: number;
+  cultPreference: number;
+  isSocioPath: boolean;
+  isTakingCareForThe7thOffsprings: boolean; 
+  progressismPreference: number;
+  humanrightsPreference: number;
   age: number;
-  biologicallyCanBePregnant: bool; 
+  biologicallyCanBePregnant: boolean; 
   lifetime: number;
 
   constructor(s){
@@ -317,16 +326,18 @@ class Citizen implements ClockInterface {
     this.id = Random.uuid(40)
     this.annualSalary = 0;
     this.IQ = 30 + Random.number(0, 60);
-    this.ConspiracyPreference = 100 - this.IQ + Random.number(0, 10) - Random.number(0, 10);
-    this.CultPreference = 100 - this.IQ + Random.number(0, 10) - Random.number(0, 10);
+    this.conspiracyPreference = 100 - this.IQ + Random.number(0, 10) - Random.number(0, 10);
+    this.cultPreference = 100 - this.IQ + Random.number(0, 10) - Random.number(0, 10);
     this.isSocioPath = !!Random.number(0, 1);
-    this.progressismPreference = 50*((this.IQ*this.ConspiracyPreference*this.CultPreference)/(50*50*50))^(1/3);
-    this.humanrightsPreference = this.isSocioPath ? 30 :
+    this.isTakingCareForThe7thOffsprings = !!Random.number(0, 1);
+    this.progressismPreference = 50*((this.IQ*this.conspiracyPreference*this.cultPreference)/(50*50*50))^(1/3);
+    this.humanrightsPreference = (this.isSocioPath) ? 30 :
+      (this.isTakingCareForThe7thOffsprings) ? 70 :
       (this.progressismPreference > 60) ? 40 :
       (this.progressismPreference > 50) ? 50 :
       (this.progressismPreference > 40) ? 60 : 70;
     this.biologicallyCanBePregnant = !!Random.number(0, 1)
-
+    this.lifetime = Random.number(65, 85) + Random.number(0, 35) - Random.number(0, 65)
   }
   tick(){
     let context = this.validate();
@@ -390,32 +401,32 @@ class Citizen implements ClockInterface {
         return;
       case LifeStage.WORKFORCE:
         if (this.annualSalary < 2000*12) {
-          let taxRate = 0.1;
+          taxRate = 0.1;
         } else if (2000*12 <= this.annualSalary && this.annualSalary < 3000*12) {
-          let taxRate = 0.13;
+          taxRate = 0.13;
         } else if (3000*12 <= this.annualSalary && this.annualSalary < 4000*12) {
-          let taxRate = 0.15;
+          taxRate = 0.15;
         } else if (4000*12 <= this.annualSalary && this.annualSalary < 5000*12) {
-          let taxRate = 0.17;
+          taxRate = 0.17;
         } else if (5000*12 <= this.annualSalary && this.annualSalary < 6000*12) {
-          let taxRate = 0.19;
+          taxRate = 0.19;
         } else if (6000*12 <= this.annualSalary && this.annualSalary < 7000*12) {
-          let taxRate = 0.21;
+          taxRate = 0.21;
         } else if (7000*12 <= this.annualSalary && this.annualSalary < 8000*12) {
-          let taxRate = 0.23;
+          taxRate = 0.23;
         } else if (8000*12 <= this.annualSalary && this.annualSalary < 9000*12) {
-          let taxRate = 0.25;
+          taxRate = 0.25;
         } else if (9000*12 <= this.annualSalary && this.annualSalary < 10000*12) {
-          let taxRate = 0.27;
+          taxRate = 0.27;
         } else {
-          let taxRate = 0.38;
+          taxRate = 0.38;
         }
       return;
       case LifeStage.NURSING:
-        let taxRate = 0;
+        taxRate = 0;
         return;
       case LifeStage.DEATH:
-        let taxRate = 0;
+        taxRate = 0;
         return;
 
       this.annualSalary = this.annualSalary*(1-taxRate)
@@ -461,49 +472,46 @@ class Citizen implements ClockInterface {
     }
   }
   passivePoliticalAction(context){
-
+    // skip: passive action is automatic in the simulator
+  }
+  affectByDeliberation(point){
+    this.IQ += point
+    this.conspiracyPreference -= point
+    this.cultPreference -= point
+    this.isSocioPath = false
+    this.progressismPreference = 50*((this.IQ*this.conspiracyPreference*this.cultPreference)/(50*50*50))^(1/3);
+    this.humanrightsPreference += point
+    return this
   }
 }
 class CorruptionResistantOfficer extends Citizen {
-  isBusy: bool;
-  constructor(){
-    super();
+  isBusy: boolean;
+  constructor(s: StateMachine, candidate: Citizen){
+    super(s);
+    this.isBusy = false;
+    this.s = s;
+    this.id = candidate.id
+    this.annualSalary = candidate.annualSalary
+    this.IQ = candidate.IQ
+    this.conspiracyPreference = candidate.conspiracyPreference
+    this.cultPreference = candidate.cultPreference
+    this.isSocioPath = candidate.isSocioPath
+    this.progressismPreference = candidate.progressismPreference
+    this.humanrightsPreference = candidate.humanrightsPreference
+    this.biologicallyCanBePregnant = candidate.biologicallyCanBePregnant
+    this.lifetime = candidate.lifetime
   }
 }
-class SupremeJudge implements CorruptionResistantOfficer {
-  constructor(){
-    super();
-  }
-  tick(){}
-  validate(){
-    return {
-      code: "",
-      report: ""
-    }
-  }
+class SupremeJudge extends CorruptionResistantOfficer {
 }
-class Facilitator implements CorruptionResistantOfficer {
-  tick(){}
-  validate(){
-    return {
-      code: "",
-      report: ""
-    }
-  }
+class Facilitator extends CorruptionResistantOfficer {
 }
-class Professional implements CorruptionResistantOfficer {
-  tick(){}
-  validate(){
-    return {
-      code: "",
-      report: ""
-    }
-  }
+class Professional extends CorruptionResistantOfficer {
 }
 
 
 class Administration implements ClockInterface {
-  id: number;
+  id: string;
   monthlyBudget: number;
   curruption: number;
   headCount: number;
@@ -511,7 +519,7 @@ class Administration implements ClockInterface {
   constructor(){
     this.id = Random.uuid(40);
     this.headCount = 8 + Random.number(0, 6);
-    this.monthlyBudget = this.headCount
+    this.monthlyBudget = [...Array(this.headCount)]
       .map(_=> 3000 + Random.number(0, 2000) )
       .reduce((sum, el) => sum + el, 0);
     this.curruption = Random.number(0, 30);
@@ -519,6 +527,9 @@ class Administration implements ClockInterface {
 
   tick(){
     this.curruption += Random.number(0, 3)/10
+  }
+  validate(){
+    return {code:"",report:""}
   }
 
 }
@@ -534,14 +545,17 @@ class Administration implements ClockInterface {
   s.addDomain('physics')
   s.addDomain('biology')
   for(var i=0; i<100; i++){
-    s.addFacilitator(s.people[Random.number(0, s.people.length-1)])
+    let candidate = s.people[Random.number(0, s.people.length-1)]
+    s.addFacilitator(new Facilitator(s, candidate))
   }
   for(var i=0; i<15; i++){
-    s.addSupremeJudge(s.people[Random.number(0, s.people.length-1)])
+    let candidate = s.people[Random.number(0, s.people.length-1)]
+    s.addSupremeJudge(new SupremeJudge(s, candidate))
   }
   for(var i=0; i<50; i++){
     for(var j=0; j<s.domains.length; j++){
-      s.addProfessional(s.domains[j], s.people[Random.number(0, s.people.length-1)])
+      let candidate = s.people[Random.number(0, s.people.length-1)]
+      s.addProfessional(s.domains[j], new Professional(s, candidate))
     }
   }
   for(var i=0; i<120; i++){

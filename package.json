@@ -1,0 +1,27 @@
+{
+  "name": "simulatus",
+  "version": "1.0.0",
+  "description": "A democracy simulator for the DAO<sub>4</sub>N.",
+  "main": "index.js",
+  "dependencies": {
+    "immutable": "^4.0.0-rc.12",
+    "random.ts": "^2.0.1",
+    "uuid": "^8.3.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc index.ts --lib es2015",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShawnAnarchy/simulatus.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ShawnAnarchy/simulatus/issues"
+  },
+  "homepage": "https://github.com/ShawnAnarchy/simulatus#readme"
+}
