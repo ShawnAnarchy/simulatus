@@ -329,13 +329,12 @@ class Citizen implements ClockInterface {
   constructor(s){
     this.s = s;
     this.id = Random.uuid(40)
-    this.age = 50 + Random.number(0, 30) - Random.number(0, 50);
     this.annualSalary = 0;
     this.IQ = 30 + Random.number(0, 60);
     this.conspiracyPreference = 100 - this.IQ + Random.number(0, 10) - Random.number(0, 10);
     this.cultPreference = 100 - this.IQ + Random.number(0, 10) - Random.number(0, 10);
-    this.isSocioPath = !!Random.number(0, 1);
-    this.isTakingCareForThe7thOffsprings = !!Random.number(0, 1);
+    this.isSocioPath = !!(Random.number(0, 1) & Random.number(0, 1) & Random.number(0, 1) & Random.number(0, 1) );
+    this.isTakingCareForThe7thOffsprings = !!(Random.number(0, 1) & Random.number(0, 1) & Random.number(0, 1) & Random.number(0, 1) );
     this.progressismPreference = 50*((this.IQ*this.conspiracyPreference*this.cultPreference)/(50*50*50))^(1/3);
     this.humanrightsPreference = (this.isSocioPath) ? 30 :
       (this.isTakingCareForThe7thOffsprings) ? 70 :
@@ -344,6 +343,7 @@ class Citizen implements ClockInterface {
       (this.progressismPreference > 40) ? 60 : 70;
     this.biologicallyCanBePregnant = !!Random.number(0, 1)
     this.lifetime = Random.number(65, 85) + Random.number(0, 35) - Random.number(0, 65)
+    this.age = this.lifetime - Random.number(0, this.lifetime)
   }
   tick(){
     let context = this.validate();
@@ -542,9 +542,15 @@ class Administration implements ClockInterface {
 
 }
 
+
+const POPULATION = 64000;
+const SIMULATE_FOR_DAYS = 60;
+FACILITATORS_INITIAL_HEADCCOUNT = 100;
+PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN = 50;
+SUPREME_JUDGES_INITIAL_HEADCCOUNT = 15;
 (function(){
   let s = new StateMachine();
-  for(var i=0; i<64000; i++){
+  for(var i=0; i<POPULATION; i++){
     s.addCitizen()
   }
   s.addDomain('finance')
@@ -552,21 +558,21 @@ class Administration implements ClockInterface {
   s.addDomain('publicSafety')
   s.addDomain('physics')
   s.addDomain('biology')
-  for(var i=0; i<100; i++){
+  for(var i=0; i<FACILITATORS_INITIAL_HEADCCOUNT; i++){
     let candidate = s.people[Random.number(0, s.people.length-1)]
     s.addFacilitator(new Facilitator(s, candidate))
   }
-  for(var i=0; i<15; i++){
+  for(var i=0; i<SUPREME_JUDGES_INITIAL_HEADCCOUNT; i++){
     let candidate = s.people[Random.number(0, s.people.length-1)]
     s.addSupremeJudge(new SupremeJudge(s, candidate))
   }
-  for(var i=0; i<50; i++){
+  for(var i=0; i<PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN; i++){
     for(var j=0; j<s.domains.length; j++){
       let candidate = s.people[Random.number(0, s.people.length-1)]
       s.addProfessional(s.domains[j], new Professional(s, candidate))
     }
   }
-  for(var i=0; i<120; i++){
+  for(var i=0; i<SIMULATE_FOR_DAYS*2; i++){
     s.tick();
   }
 
