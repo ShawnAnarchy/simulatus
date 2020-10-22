@@ -1,12 +1,13 @@
 import * as Random from 'random.ts'
+const TICKING_TIME = 0.5
 
-type validationResult = {
+type ValidationResult = {
   code: string,
   report: string
 }
 interface ClockInterface {
   tick(): void;
-  validate: validationResult;
+  validate(): ValidationResult;
 }
 
 class StateMachine implements ClockInterface {
@@ -75,8 +76,8 @@ class StateMachine implements ClockInterface {
     return this.people.map(p=> p.annualSalary ).reduce((sum, el) => sum + el, 0);
   }
   tick(){
-    let validationResult = this.validate();
-    if( !validationResult.code ) throw new Error(`DAO4N Error: Assumption viorated. ${validationResult.report}`)
+    let context = this.validate();
+    if( !context.code ) throw new Error(`DAO4N Error: Assumption viorated. ${context.report}`)
 
     // TODO tick all actors
     this.people.map(c=> c.tick() )
@@ -181,48 +182,77 @@ class Proposal implements ClockInterface {
   }
 
   tick(){
-    let validationResult = this.validate()
-    if(validationResult.code === ProposalPhasees.FINAL_JUDGE) {
-      let forCount = this.representatives.filter(r=>{
-        let res = false;
-        if( r.humanrightsPreference < 50 && r.progressismPreference > this.progressismPreference ) {
-          res = true
-        } else if ( r.progressismPreference > this.progressismPreference && r.humanrightsPreference > this.humanrightsDegree ) {
-          res = true
+    let context = this.validate()
+    
+    switch(context.code){
+      case ProposalPhasees.FINAL_JUDGE:
+        let forCount = this.representatives.filter(r=>{
+          let res = false;
+          if( r.humanrightsPreference < 50 && r.progressismPreference > this.progressismPreference ) {
+            res = true
+          } else if ( r.progressismPreference > this.progressismPreference && r.humanrightsPreference > this.humanrightsDegree ) {
+            res = true
+          }
+          return res;
+        }).length
+        if(forCount > representatives.length/2){
+          this.s.miscellaneousAdministrations.push(this.administrationToBeCreated)
+        } else {
+          this.s.removeProposal(this.id)
         }
-        return res;
-      }).length
-      if(forCount > representatives.length/2){
-        // Approved
-        // TODO push administrationToBeCreated to the StateMachine
-        // TODO is the StateMachine to be global variable?
-      } else {
-        // Denied
-      }
-    } else if (validationResult.code === ProposalPhasees.INITIAL_JUDGE){
-      //TODO 
-    } else {
-
+        return;
+      case ProposalPhasees.INITIAL_JUDGE:
+        if(this.proposer.IQ > 50){
+          // just tick if proposal is pseudo-reasonable
+        } else {
+          this.s.removeProposal(this.id)
+        }
+        return;
+      case ProposalPhasees.FACILITATOR_ASSIGNMENT:
+        let f = this.s.facilitators.filter(f=> !f.isBusy )
+        this.facilitator = f[Random.number(0, f.length-1)]
+        return;
+      case ProposalPhasees.DOMAIN_ASSIGNMENT:
+        // this.domains = this.s.domains.sample(Random.number(0, this.s.domains.length-1))
+        return;
+      case ProposalPhasees.PROFESSIONAL_ASSIGNMENT:
+        /*
+        this.domains.map(d=>{
+          let p = this.s.professionals[d].filter(p=> !p.isBusy )
+          this.professionals.push( p[Random.number(0, p.length-1)] )
+        })
+        */
+       /* TODO
+       class CorruptionResistantOfficer extends Citizen {
+         isBusy: bool;
+       }
+       */
+        return;
+      case ProposalPhasees.DELIBERATION:
+        return;
+      case ProposalPhasees.HEADCOUNT_EXCEEDED:
+        return;
     }
 
-    //TODO
-    this.spentDays += 3
+    this.spentDays += TICKING_TIME
   }
   validate(){
-    if(this.spentDays > this.durationDays) {
-      return {
-        code: ProposalPhasees.FINAL_JUDGE,
-        report: ""
-      }  
-    } else if(this.spentDays === 0) {
-      return {
-        code: ProposalPhasees.INITIAL_JUDGE,
-        report: ""
-      }  
+    if(this.spentDays === 0) {
+      return { code: ProposalPhasees.INITIAL_JUDGE, report: "" }
+    } else if(0 < this.spentDays && !this.facilitator) {
+      return { code: ProposalPhasees.FACILITATOR_ASSIGNMENT, report: "" }
+    } else if(!!this.facilitator && !this.domains) {
+      return { code: ProposalPhasees.DOMAIN_ASSIGNMENT, report: "" }
+    } else if(!!this.facilitator && !!this.domains && !this.professionals) {
+      return { code: ProposalPhasees.PROFESSIONAL_ASSIGNMENT, report: "" }
+    } else if(!!this.facilitator && !!this.domains && !!this.professionals) {
+      return { code: ProposalPhasees.DELIBERATION, report: "" }  
+    } else if(this.spentDays === this.durationDays) {
+      return { code: ProposalPhasees.FINAL_JUDGE, report: "" }
     } else if(this.representatives.length > this.representativeHeadcount) {
       return {
         code: ProposalPhasees.HEADCOUNT_EXCEEDED,
-        report: `this.representatives.length=${this.representatives.length} and this.representativeHeadcount=${this.representatives.length}`
+        report: `this.representatives.length=${this.representatives.length} and this.representativeHeadcount=${this.representativeHeadcount}`
       }  
     } else {
   
@@ -294,18 +324,19 @@ class Citizen implements ClockInterface {
 
   }
   tick(){
-    this.age += 3/365
-    let validationResult = this.validate();
+    let context = this.validate();
 
-    this.earn(validationResult)
-    this.payTax(validationResult)
-    this.getWelfare(validationResult)
-    this.activePoliticalAction(validationResult)
-    this.passivePoliticalAction(validationResult)
+    this.earn(context)
+    this.payTax(context)
+    this.getWelfare(context)
+    this.activePoliticalAction(context)
+    this.passivePoliticalAction(context)
     
-    if(validationResult.code === LifeStage.DEATH){
+    if(context.code === LifeStage.DEATH){
       this.s.removeCitizen(this.id)
     }
+
+    this.age += TICKING_TIME/365
   }
   validate(){
     if (this.age > this.lifetime) {
@@ -317,12 +348,9 @@ class Citizen implements ClockInterface {
     } else if (16 <= this.age) {
       return { code: LifeStage.SUFFRAGE, report: "" }
     }
-    //TODO give birth as its tendency of giving birth
-    //TODO political status
-    //TODO social status
   }
-  earn(validationResult){
-    switch(validationResult.code){
+  earn(context){
+    switch(context.code){
       case LifeStage.SUFFRAGE:
         this.annualSalary = -1500*12
         return;
@@ -349,9 +377,9 @@ class Citizen implements ClockInterface {
         return;
     }
   }
-  payTax(validationResult){
+  payTax(context){
     let taxRate;
-    switch(validationResult.code){
+    switch(context.code){
       case LifeStage.SUFFRAGE:
         taxRate = 0;
         return;
@@ -389,9 +417,9 @@ class Citizen implements ClockInterface {
       this.s.payTax(this.annualSalary*taxRate)
     }
   }
-  getWelfare(validationResult){
+  getWelfare(context){
     let welfareAmount;
-    switch(validationResult.code){
+    switch(context.code){
       case LifeStage.SUFFRAGE:
         welfareAmount = 1000*12
         return;
@@ -409,8 +437,8 @@ class Citizen implements ClockInterface {
     this.s.withdrawWelfare(welfareAmount)
 
   }
-  activePoliticalAction(validationResult){
-    switch(validationResult.code){
+  activePoliticalAction(context){
+    switch(context.code){
       case LifeStage.SUFFRAGE:
       case LifeStage.WORKFORCE:
       case LifeStage.NURSING:
@@ -419,8 +447,6 @@ class Citizen implements ClockInterface {
           if(this.annualSalary/12 > 5000 || this.IQ > 55) {
             if(Random.number(0, 365/3) === 0){
               this.s.submitProposal(this)
-              //TODO new Proposal(this)
-              //TODO IQ of proposer is important for the initial judge
             }
           }
         }
@@ -429,12 +455,20 @@ class Citizen implements ClockInterface {
         return;
     }
   }
-  passivePoliticalAction(validationResult){
+  passivePoliticalAction(context){
 
   }
 }
-
-class SupremeJudge implements ClockInterface {
+class CorruptionResistantOfficer extends Citizen {
+  isBusy: bool;
+  constructor(){
+    super();
+  }
+}
+class SupremeJudge implements CorruptionResistantOfficer {
+  constructor(){
+    super();
+  }
   tick(){}
   validate(){
     return {
@@ -443,7 +477,7 @@ class SupremeJudge implements ClockInterface {
     }
   }
 }
-class Facilitator implements ClockInterface {
+class Facilitator implements CorruptionResistantOfficer {
   tick(){}
   validate(){
     return {
@@ -452,7 +486,7 @@ class Facilitator implements ClockInterface {
     }
   }
 }
-class Professional implements ClockInterface {
+class Professional implements CorruptionResistantOfficer {
   tick(){}
   validate(){
     return {
