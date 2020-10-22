@@ -1,3 +1,5 @@
+import * as fs from 'ts-fs'
+
 export function shuffle(array) {
   var currentIndex = array.length, temporaryValue, randomIndex;
 
@@ -15,4 +17,11 @@ export function shuffle(array) {
   }
 
   return array;
+}
+
+export function trace(...args:any[]):void {
+  let str:string = "";
+  if (args.length > 0)
+      str = args.map(o=> JSON.stringify(o) ).join(", ");
+  fs.writeFileSync(`./logs/${Date.now()}`, "{" + str + "}");
 }

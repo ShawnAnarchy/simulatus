@@ -2,3 +2,5 @@
 node_modules
 .idea
 index.js
+util.js
+logs

@@ -1,5 +1,6 @@
 import * as Random from 'random.ts'
 import * as Util from './util'
+
 const TICKING_TIME = 0.5
 
 type ValidationResult = {
@@ -38,6 +39,7 @@ class StateMachine implements ClockInterface {
     this.treasury = 0;
     this.annualRevenue = 0;
     this.domains = [];
+    this.miscellaneousAdministrations = [];
     this.AofMedia = new Administration();
     this.AofEducation = new Administration();
     this.AofSurveillance = new Administration();
@@ -115,7 +117,7 @@ class StateMachine implements ClockInterface {
     // TODO check deregistration rate
 
     return {
-      code: "",
+      code: "a",
       report: ""
     }
   }
@@ -304,7 +306,8 @@ enum LifeStage {
   SUFFRAGE = 's',
   WORKFORCE = 'w',
   NURSING = 'n',
-  DEATH = 'd'
+  DEATH = 'd',
+  OTHER = 'o'
 }
 class Citizen implements ClockInterface {
   s: StateMachine;
@@ -363,6 +366,8 @@ class Citizen implements ClockInterface {
       return { code: LifeStage.WORKFORCE, report: "" }
     } else if (16 <= this.age) {
       return { code: LifeStage.SUFFRAGE, report: "" }
+    } else {
+      return { code: LifeStage.OTHER, report: "" }
     }
   }
   earn(context){
@@ -561,4 +566,6 @@ class Administration implements ClockInterface {
   for(var i=0; i<120; i++){
     s.tick();
   }
+
+  trace(s)
 })()
