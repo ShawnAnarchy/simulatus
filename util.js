@@ -1,6 +1,6 @@
 "use strict";
 exports.__esModule = true;
-exports.stringify = exports.trace = exports.shuffle = void 0;
+exports.squash = exports.stringify = exports.trace = exports.shuffle = void 0;
 var fs = require("fs");
 var childProcess = require("child_process");
 function shuffle(array) {
@@ -53,3 +53,7 @@ function stringify(circ) {
     return res;
 }
 exports.stringify = stringify;
+function squash(arr) {
+    return arr.filter(function (val) { return val !== null; }).join(", ");
+}
+exports.squash = squash;

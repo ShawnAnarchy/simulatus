@@ -1,0 +1,14 @@
+{
+  "global": {
+    "tickingTime": 0.5,
+    "simulateForDays": 60
+  },
+  "nation": {
+    "population": 2500
+  },
+  "deliberation": {
+    "facilitatorsInitialHeadcount": 50,
+    "professionalsInitialHeadcountPerDomain": 20,
+    "supremeJudgesInitialHeadcount": 5
+  }
+}

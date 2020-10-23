@@ -49,3 +49,7 @@ export function stringify(circ){
   cache = null; // Enable garbage collection
   return res;
 }
+
+export function squash(arr){
+  return arr.filter(function(val) { return val !== null; }).join(", ")
+}

@@ -5,6 +5,7 @@
   "main": "index.js",
   "dependencies": {
     "@types/node": "^14.14.2",
+    "config": "^3.3.2",
     "immutable": "^4.0.0-rc.12",
     "random.ts": "^2.0.1",
     "ts-fs": "^0.1.0",
