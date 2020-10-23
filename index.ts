@@ -10,6 +10,8 @@ const SIMULATE_FOR_DAYS = config.get('global.simulateForDays');
 const FACILITATORS_INITIAL_HEADCCOUNT = config.get('deliberation.facilitatorsInitialHeadcount');
 const PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN = config.get('deliberation.professionalsInitialHeadcountPerDomain');
 const SUPREME_JUDGES_INITIAL_HEADCCOUNT = config.get('deliberation.supremeJudgesInitialHeadcount');
+const UPPERBOUND = config.get('citizen.derivationUpperBound');
+const LOWERBOUND = config.get('citizen.derivationLowerBound');
 
 type ValidationResult = {
   code: string,
@@ -72,7 +74,7 @@ class StateMachine implements ClockInterface {
     this.professionals[name] = [];
   }
   addCitizen(){
-    this.people.push(new Citizen(this))
+    this.people.push(new Citizen())
   }
   removeCitizen(citizenId){
     let index = this.people.map((c,i) => c.id == citizenId ? i : 0).reduce((s,i)=> s+i,0)
@@ -132,7 +134,7 @@ class StateMachine implements ClockInterface {
     }
   }
   submitProposal(proposer, problemType){
-    this.proposals.push(new Proposal(proposer, this, problemType))
+    this.proposals.push(new Proposal(proposer, problemType))
   }
   approveProposal(proposal){
     this.miscellaneousAdministrations.push(proposal.administrationToBeCreated)
@@ -157,6 +159,27 @@ class StateMachine implements ClockInterface {
     })
   }
 }
+let state = (() => {
+  var instance: StateMachine;
+
+  function createInstance():StateMachine {
+    var object: StateMachine = new StateMachine();
+    return object;
+  }
+
+  return {
+    get: ()=>{
+      if (!instance) {
+        instance = createInstance();
+      }
+      return instance;
+    },
+    set: _state=>{
+      instance = _state
+    }
+  }
+})();
+
 
 const enum ProblemTypes {
   ASSIGNMENT = 'a',
@@ -193,8 +216,7 @@ class Proposal implements ClockInterface {
   vestedMonthlyBudget: number;
   isFinished: boolean;
 
-  constructor(proposer, s, problemType){
-    this.s = s;
+  constructor(proposer, problemType){
     this.id = Random.uuid(40);
     this.problemType = problemType;
     this.proposer = proposer;
@@ -232,7 +254,7 @@ class Proposal implements ClockInterface {
     this.representatives = this.representatives.map(r=>{ r.isBusy = false; return r; });
     if(this.facilitator) this.facilitator.isBusy = false;
     this.professionals = this.professionals.map(p=>{ p.isBusy = false; return p; });
-    this.s.updateProposal(this);
+    state.get().updateProposal(this);
   }
 
   tick(){
@@ -246,7 +268,7 @@ class Proposal implements ClockInterface {
         }
         break;
       case ProposalPhases.FACILITATOR_ASSIGNMENT:
-        let f = this.s.facilitators.filter(f=> !f.isBusy )
+        let f = state.get().facilitators.filter(f=> !f.isBusy )
         this.facilitator = f[Random.number(0, f.length-1)]
         break;
       case ProposalPhases.DOMAIN_ASSIGNMENT:
@@ -275,7 +297,7 @@ class Proposal implements ClockInterface {
           return res;
         }).length
         if(forCount > this.representatives.length/2){
-          this.s.approveProposal(this);
+          state.get().approveProposal(this);
           this.finishProposal();
         } else {
           this.finishProposal();
@@ -313,30 +335,30 @@ class Proposal implements ClockInterface {
     }
   }
   pickFacilitator(){
-    let candidates = this.s.facilitators.filter(f=> !f.isBusy )
+    let candidates = state.get().facilitators.filter(f=> !f.isBusy )
     let randIndex = Random.number(0, candidates.length-1)
     let selectedFacilitator = candidates[randIndex]
     selectedFacilitator.isBusy = true
-    this.s.facilitators[randIndex] = selectedFacilitator
+    state.get().facilitators[randIndex] = selectedFacilitator
     this.facilitator = selectedFacilitator
   }
   pickRepresentatives(){
     let rand = Random.number(0, this.representativeHeadcount-1);
-    let shuffledPeople = Util.shuffle(this.s.people.filter(p=> (!p.isBusy && 16 <= p.age) ));
+    let shuffledPeople = Util.shuffle(state.get().people.filter(p=> (!p.isBusy && 16 <= p.age) ));
     [...Array(rand)].map((x,i)=> this.representatives.push(shuffledPeople[i])  );
   }
   pickDomains(){
-    let rand = Random.number(0, this.s.domains.length-1);
-    let shuffledDomains = Util.shuffle(this.s.domains);
+    let rand = Random.number(0, state.get().domains.length-1);
+    let shuffledDomains = Util.shuffle(state.get().domains);
     [...Array(rand)].map((x,i)=> this.domains.push(shuffledDomains[i])  );
   }
   pickProfessionals(){
     this.domains.map(d=>{
-      let candidates = this.s.professionals[d].filter(p=> !p.isBusy )
+      let candidates = state.get().professionals[d].filter(p=> !p.isBusy )
       let randIndex = Random.number(0, candidates.length-1)
       let selectedProfessional = candidates[randIndex]
       selectedProfessional.isBusy = true;
-      this.s.professionals[d][randIndex] = selectedProfessional;
+      state.get().professionals[d][randIndex] = selectedProfessional;
       this.professionals.push( selectedProfessional )
     })
   }
@@ -354,7 +376,6 @@ enum LifeStage {
   OTHER = 'o'
 }
 class Citizen implements ClockInterface {
-  s: StateMachine;
   id: string;
   annualSalary: number;
   intelligenceDeviation: number;
@@ -369,8 +390,7 @@ class Citizen implements ClockInterface {
   lifetime: number;
   isBusy: boolean;
 
-  constructor(s){
-    this.s = s;
+  constructor(){
     this.id = Random.uuid(40)
     this.annualSalary = 0;
     this.intelligenceDeviation = 30 + Random.number(0, 60);
@@ -399,10 +419,11 @@ class Citizen implements ClockInterface {
     this.passivePoliticalAction(context)
     
     if(context.code === LifeStage.DEATH){
-      this.s.removeCitizen(this.id)
+      state.get().removeCitizen(this.id)
     }
 
     this.age += TICKING_TIME/365
+    this.validateAfter();
   }
   validate(){
     if (this.age > this.lifetime) {
@@ -416,6 +437,19 @@ class Citizen implements ClockInterface {
     } else {
       return { code: LifeStage.OTHER, report: "" }
     }
+  }
+  validateAfter(){
+    if(this.intelligenceDeviation < LOWERBOUND) this.intelligenceDeviation = LOWERBOUND;
+    if(this.conspiracyPreference < LOWERBOUND) this.conspiracyPreference = LOWERBOUND;
+    if(this.cultPreference < LOWERBOUND) this.cultPreference = LOWERBOUND;
+    if(this.progressismPreference < LOWERBOUND) this.progressismPreference = LOWERBOUND;
+    if(this.humanrightsPreference < LOWERBOUND) this.humanrightsPreference = LOWERBOUND;
+
+    if(UPPERBOUND < this.intelligenceDeviation) this.intelligenceDeviation = UPPERBOUND;
+    if(UPPERBOUND < this.conspiracyPreference) this.conspiracyPreference = UPPERBOUND;
+    if(UPPERBOUND < this.cultPreference) this.cultPreference = UPPERBOUND;
+    if(UPPERBOUND < this.progressismPreference) this.progressismPreference = UPPERBOUND;
+    if(UPPERBOUND < this.humanrightsPreference) this.humanrightsPreference = UPPERBOUND;
   }
   earn(context){
     switch(context.code){
@@ -482,8 +516,8 @@ class Citizen implements ClockInterface {
         break;
     }
     this.annualSalary = this.annualSalary*(1-taxRate)
-    this.s.payTax(this.annualSalary*taxRate)
-}
+    state.get().payTax(this.annualSalary*taxRate)
+  }
   getWelfare(context){
     let welfareAmount;
     switch(context.code){
@@ -501,7 +535,7 @@ class Citizen implements ClockInterface {
         break;
     }
     this.annualSalary = this.annualSalary + welfareAmount
-    this.s.withdrawWelfare(welfareAmount)
+    state.get().withdrawWelfare(welfareAmount)
   }
   activePoliticalAction(context){
     switch(context.code){
@@ -522,7 +556,7 @@ class Citizen implements ClockInterface {
     }
   }
   submitProposal(){
-    this.s.submitProposal(this, ProblemTypes.NORMAL)
+    state.get().submitProposal(this, ProblemTypes.NORMAL)
     this.isBusy = true;
   }
   passivePoliticalAction(context){
@@ -539,10 +573,10 @@ class Citizen implements ClockInterface {
   }
 }
 class CorruptionResistantOfficer extends Citizen {
-  constructor(s: StateMachine, candidate: Citizen){
-    super(s);
+  constructor(candidate: Citizen){
+    let s = state.get();
+    super();
     this.isBusy = candidate.isBusy;
-    this.s = s;
     this.id = candidate.id
     this.annualSalary = candidate.annualSalary
     this.intelligenceDeviation = candidate.intelligenceDeviation
@@ -590,7 +624,7 @@ class Administration implements ClockInterface {
 
 
 (function(){
-  let s = new StateMachine();
+  let s = state.get();
   for(var i=0; i<POPULATION; i++){
     s.addCitizen()
   }
@@ -601,16 +635,16 @@ class Administration implements ClockInterface {
   s.addDomain('biology')
   for(var i=0; i<FACILITATORS_INITIAL_HEADCCOUNT; i++){
     let candidate = s.people[Random.number(0, s.people.length-1)]
-    s.addFacilitator(new Facilitator(s, candidate))
+    s.addFacilitator(new Facilitator(candidate))
   }
   for(var i=0; i<SUPREME_JUDGES_INITIAL_HEADCCOUNT; i++){
     let candidate = s.people[Random.number(0, s.people.length-1)]
-    s.addSupremeJudge(new SupremeJudge(s, candidate))
+    s.addSupremeJudge(new SupremeJudge(candidate))
   }
   for(var i=0; i<PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN; i++){
     for(var j=0; j<s.domains.length; j++){
       let candidate = s.people[Random.number(0, s.people.length-1)]
-      s.addProfessional(s.domains[j], new Professional(s, candidate))
+      s.addProfessional(s.domains[j], new Professional(candidate))
     }
   }
   for(var i=0; i<SIMULATE_FOR_DAYS*2; i++){

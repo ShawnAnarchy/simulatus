@@ -1,0 +1,1 @@
+{"version":3,"file":"index.test.js","sources":["index.test.ts"],"sourcesContent":["describe('1', () => {\n  it('2', () => {\n    expect(1).toBe(1);\n  });\n})"],"names":[],"mappings":"AAAA,QAAQ,CAAC,GAAG,EAAE;IACZ,EAAE,CAAC,GAAG,EAAE;QACN,MAAM,CAAC,CAAC,CAAC,CAAC,IAAI,CAAC,CAAC,CAAC,CAAC;KACnB,CAAC,CAAC;AACL,CAAC,CAAC"}

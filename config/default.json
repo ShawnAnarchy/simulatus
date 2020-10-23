@@ -10,5 +10,9 @@
     "facilitatorsInitialHeadcount": 50,
     "professionalsInitialHeadcountPerDomain": 20,
     "supremeJudgesInitialHeadcount": 5
+  },
+  "citizen": {
+    "derivationUpperBound": 85,
+    "derivationLowerBound": 15
   }
 }
