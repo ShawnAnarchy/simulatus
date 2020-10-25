@@ -1,5 +1,3 @@
-import * as Random from './src/random'
-import * as Util from './src/util'
 import {
   TICKING_TIME,
   POPULATION,
@@ -8,8 +6,11 @@ import {
   PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN,
   SUPREME_JUDGES_INITIAL_HEADCCOUNT,
   UPPERBOUND,
-  LOWERBOUND } from './src/const'
-import { state, Facilitator, Professional, SupremeJudge } from './src/lib'
+  LOWERBOUND } from './src/const';
+
+  import * as Random from './src/random';
+import * as Util from './src/util';
+import { state, Facilitator, Professional, SupremeJudge } from './src/lib';
 let trace = Util.trace;
 
 (function(){

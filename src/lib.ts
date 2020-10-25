@@ -73,8 +73,10 @@ export class StateMachine implements ClockInterface {
     this.domains.push(name);
     this.professionals[name] = [];
   }
-  addCitizen(){
-    this.people.push(new Citizen())
+  addCitizen(): Citizen {
+    let citizen = new Citizen();
+    this.people.push(citizen);
+    return citizen;
   }
   removeCitizen(citizenId){
     let index = this.people.map((c,i) => c.id == citizenId ? i : 0).reduce((s,i)=> s+i,0)
@@ -188,7 +190,7 @@ export const enum ProblemTypes {
   HEAVY = 'h',
   VARIABLE_UPDATE = 'vu'
 }
-const enum ProposalPhases {
+export const enum ProposalPhases {
   INITIAL_JUDGE = 'i',
   FACILITATOR_ASSIGNMENT = 'fa',
   DOMAIN_ASSIGNMENT = 'da',
@@ -198,7 +200,7 @@ const enum ProposalPhases {
   HEADCOUNT_EXCEEDED = 'h',
   UNKNOWN_ERROR = "ue"
 }
-class Proposal implements ClockInterface {
+export class Proposal implements ClockInterface {
   s: StateMachine;
   id: string;
   proposer: Citizen;
