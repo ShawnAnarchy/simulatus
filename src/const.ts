@@ -1,4 +1,4 @@
-const config = require('config');
+import * as config from 'config';
 
 export const TICKING_TIME = config.get('global.tickingTime')
 export const POPULATION = config.get('nation.population');

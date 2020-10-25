@@ -10,7 +10,6 @@ import {
   UPPERBOUND,
   LOWERBOUND } from './const'
 let squash = Util.squash;
-const config = require('config');
 
 
 

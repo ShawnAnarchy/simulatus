@@ -19,8 +19,9 @@ export default {
     file: outfile,
     sourcemap:true
   },
+  format: "cjs",
   plugins: [
-    typescript({ module: 'CommonJS' }),
+    typescript(),
     commonjs(),
     resolve(),
     json()
