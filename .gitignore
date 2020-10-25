@@ -4,3 +4,4 @@ node_modules
 index.js
 util.js
 logs
+*.map
