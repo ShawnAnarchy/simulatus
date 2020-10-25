@@ -1,4 +1,4 @@
-import * as Random from 'random.ts'
+import * as Random from './random'
 import * as Util from './util'
 import {
   TICKING_TIME,
