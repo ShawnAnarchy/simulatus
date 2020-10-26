@@ -8,6 +8,8 @@ import {
   UPPERBOUND,
   LOWERBOUND } from '../const';
 
+const TEST_DOMAIN = 'test_domain';
+
 import * as Random from '../random';
 import * as Util from '../util';
 import {
@@ -55,6 +57,26 @@ describe('Proposal', () => {
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.DOMAIN_ASSIGNMENT);
         expect(s.people.length).toBe(2);
+      });
+    });
+    context('ProposalPhases.PROFESSIONAL_ASSIGNMENT', () => {
+      it('should be true.', () => {
+        let s = state.get();
+        s.proposals[0].domains = [TEST_DOMAIN];
+        let proposal = s.proposals[0];
+        let validationResult = proposal.validate();
+        expect(validationResult.code).toBe(ProposalPhases.PROFESSIONAL_ASSIGNMENT);
+      });
+    });
+    context('ProposalPhases.DELIBERATION', () => {
+      it('should be true.', () => {
+        let s = state.get();
+        s.professionals[TEST_DOMAIN] = [s.addCitizen()];
+        s.proposals[0].professionals = [s.professionals[TEST_DOMAIN][0]];
+        let proposal = s.proposals[0];
+        let validationResult = proposal.validate();
+        expect(validationResult.code).toBe(ProposalPhases.DELIBERATION);
+        expect(s.people.length).toBe(3);
       });
     });
   })

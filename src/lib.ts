@@ -319,9 +319,9 @@ export class Proposal implements ClockInterface {
       return { code: ProposalPhases.FACILITATOR_ASSIGNMENT, report: "" }
     } else if(!!this.facilitator && this.domains.length === 0) {
       return { code: ProposalPhases.DOMAIN_ASSIGNMENT, report: "" }
-    } else if(!!this.facilitator && this.domains.length > 0 && !this.professionals) {
+    } else if(!!this.facilitator && this.domains.length > 0 && this.professionals.length === 0) {
       return { code: ProposalPhases.PROFESSIONAL_ASSIGNMENT, report: "" }
-    } else if(!!this.facilitator && this.domains.length > 0 && !!this.professionals) {
+    } else if(!!this.facilitator && this.domains.length > 0 && this.professionals.length > 0) {
       return { code: ProposalPhases.DELIBERATION, report: "" }  
     } else if(this.spentDays === this.durationDays) {
       return { code: ProposalPhases.FINAL_JUDGE, report: "" }
