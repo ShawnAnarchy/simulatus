@@ -6,11 +6,11 @@ import {
   PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN,
   SUPREME_JUDGES_INITIAL_HEADCCOUNT,
   UPPERBOUND,
-  LOWERBOUND } from './src/const';
+  LOWERBOUND } from './const';
 
-  import * as Random from './src/random';
-import * as Util from './src/util';
-import { state, Facilitator, Professional, SupremeJudge } from './src/lib';
+  import * as Random from './random';
+import * as Util from './util';
+import { state, Facilitator, Professional, SupremeJudge } from './lib';
 let trace = Util.trace;
 
 (function(){

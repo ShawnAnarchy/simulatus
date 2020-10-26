@@ -30,7 +30,8 @@
     ],
     "transform": {
       "^.+\\.(ts|tsx)$": "ts-jest"
-    }
+    },
+    "silent": true
   },
   "type": "module",
   "scripts": {

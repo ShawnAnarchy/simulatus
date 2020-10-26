@@ -135,8 +135,10 @@ export class StateMachine implements ClockInterface {
       report: ""
     }
   }
-  submitProposal(proposer, problemType){
-    this.proposals.push(new Proposal(proposer, problemType))
+  submitProposal(proposer, problemType): Proposal{
+    let proposal = new Proposal(proposer, problemType);
+    this.proposals.push(proposal);
+    return proposal;
   }
   approveProposal(proposal){
     this.miscellaneousAdministrations.push(proposal.administrationToBeCreated)
@@ -315,11 +317,11 @@ export class Proposal implements ClockInterface {
       return { code: ProposalPhases.INITIAL_JUDGE, report: "" }
     } else if(0 < this.spentDays && !this.facilitator) {
       return { code: ProposalPhases.FACILITATOR_ASSIGNMENT, report: "" }
-    } else if(!!this.facilitator && !this.domains) {
+    } else if(!!this.facilitator && this.domains.length === 0) {
       return { code: ProposalPhases.DOMAIN_ASSIGNMENT, report: "" }
-    } else if(!!this.facilitator && !!this.domains && !this.professionals) {
+    } else if(!!this.facilitator && this.domains.length > 0 && !this.professionals) {
       return { code: ProposalPhases.PROFESSIONAL_ASSIGNMENT, report: "" }
-    } else if(!!this.facilitator && !!this.domains && !!this.professionals) {
+    } else if(!!this.facilitator && this.domains.length > 0 && !!this.professionals) {
       return { code: ProposalPhases.DELIBERATION, report: "" }  
     } else if(this.spentDays === this.durationDays) {
       return { code: ProposalPhases.FINAL_JUDGE, report: "" }

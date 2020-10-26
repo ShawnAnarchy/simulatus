@@ -41,10 +41,7 @@ export function string(length: number = 6): string {
 // get uuid by pseudo-random generator
 export function uuid(length: number = 21): string {
   let res: string = "";
-  const random: Uint8Array =
-    typeof window === "object"
-      ? window.crypto.getRandomValues(new Uint8Array(length))
-      : randomBytes(length);
+  const random: Uint8Array = randomBytes(length);
 
   while (length--) {
     res += base64[random[length] & 0x3f];
