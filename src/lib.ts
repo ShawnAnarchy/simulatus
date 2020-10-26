@@ -315,15 +315,15 @@ export class Proposal implements ClockInterface {
   validate(){
     if(this.spentDays === 0) {
       return { code: ProposalPhases.INITIAL_JUDGE, report: "" }
-    } else if(0 < this.spentDays && !this.facilitator) {
+    } else if(0 < this.spentDays && !this.facilitator && this.spentDays < this.durationDays) {
       return { code: ProposalPhases.FACILITATOR_ASSIGNMENT, report: "" }
-    } else if(!!this.facilitator && this.domains.length === 0) {
+    } else if(!!this.facilitator && this.domains.length === 0 && this.spentDays < this.durationDays) {
       return { code: ProposalPhases.DOMAIN_ASSIGNMENT, report: "" }
-    } else if(!!this.facilitator && this.domains.length > 0 && this.professionals.length === 0) {
+    } else if(!!this.facilitator && this.domains.length > 0 && this.professionals.length === 0 && this.spentDays < this.durationDays) {
       return { code: ProposalPhases.PROFESSIONAL_ASSIGNMENT, report: "" }
-    } else if(!!this.facilitator && this.domains.length > 0 && this.professionals.length > 0) {
+    } else if(!!this.facilitator && this.domains.length > 0 && this.professionals.length > 0 && this.spentDays < this.durationDays) {
       return { code: ProposalPhases.DELIBERATION, report: "" }  
-    } else if(this.spentDays === this.durationDays) {
+    } else if(!!this.facilitator && this.domains.length > 0 && this.professionals.length > 0 && this.spentDays === this.durationDays) {
       return { code: ProposalPhases.FINAL_JUDGE, report: "" }
     } else if(this.representatives.length > this.representativeHeadcount) {
       return {

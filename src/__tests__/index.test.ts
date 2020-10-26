@@ -79,5 +79,14 @@ describe('Proposal', () => {
         expect(s.people.length).toBe(3);
       });
     });
+    context('ProposalPhases.FINAL_JUDGE', () => {
+      it('should be true.', () => {
+        let s = state.get();
+        s.proposals[0].spentDays = s.proposals[0].durationDays
+        let proposal = s.proposals[0];
+        let validationResult = proposal.validate();
+        expect(validationResult.code).toBe(ProposalPhases.FINAL_JUDGE);
+      });
+    });
   })
 })
