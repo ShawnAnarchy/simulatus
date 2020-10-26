@@ -25,11 +25,11 @@ import {
 const context = describe;
 
 describe('Proposal', () => {
-  describe('tick', () => {
+  describe('validate', () => {
 
     context('ProposalPhases.INITIAL_JUDGE', () => {
       it('should be initialized.', () => {
-        let s = state.get();
+        let s = state.init();
         let citizen = s.addCitizen();
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
         let validationResult = proposal.validate();
@@ -86,6 +86,19 @@ describe('Proposal', () => {
         let proposal = s.proposals[0];
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.FINAL_JUDGE);
+      });
+    });
+  })
+  describe('tick', () => {
+    context('ProposalPhases.INITIAL_JUDGE', () => {
+      it('should be initialized.', () => {
+        let s = state.init();
+        let citizen = s.addCitizen();
+        let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
+        let validationResult = proposal.validate();
+        expect(validationResult.code).toBe(ProposalPhases.INITIAL_JUDGE);
+        expect(s.proposals.length).toBe(1);
+        expect(s.people.length).toBe(1);
       });
     });
   })

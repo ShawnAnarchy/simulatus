@@ -180,6 +180,10 @@ export let state = (() => {
     },
     set: _state=>{
       instance = _state
+    },
+    init: ()=>{
+      instance = createInstance();
+      return instance;
     }
   }
 })();
