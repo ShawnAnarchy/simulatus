@@ -26,6 +26,23 @@ import {
 
 const context = describe;
 
+
+describe('StateMachine', () => {
+  describe('submitProposal', () => {
+    it('should create new proposal.', () => {
+      let s = state.init();
+      for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
+      s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
+      let proposer = s.people[0];
+      s.submitProposal(proposer, ProblemTypes.NORMAL);
+      expect(s.proposals[0].representatives.length).toBe(REPRESENTATIVE_HEADCOUNT);
+      expect(s.proposals[0].representatives).toEqual(
+        expect.not.arrayContaining([null,undefined])
+      );
+  })
+  })
+})
+
 describe('Proposal', () => {
   describe('validate', () => {
 
@@ -40,14 +57,12 @@ describe('Proposal', () => {
         expect(s.people.length).toBe(1);
         expect(proposal.representatives.length).toBeLessThan(REPRESENTATIVE_HEADCOUNT);
         expect(proposal.representatives).toEqual(
-          expect.not.arrayContaining([null])
+          expect.not.arrayContaining([null,undefined])
         );
       });
       it('should be failed due to busy citizens.', () => {
         let s = state.init();
-        for(var i=0; i<ENOUGH_POPULATION; i++){
-          s.addCitizen();
-        }
+        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
         s.people = s.people.map(p=>{ p.isBusy = true; return p; });
         let citizen = s.people[0];
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
@@ -57,14 +72,12 @@ describe('Proposal', () => {
         expect(s.people.length).toBe(ENOUGH_POPULATION);
         expect(proposal.representatives.length).toBeLessThan(REPRESENTATIVE_HEADCOUNT);
         expect(proposal.representatives).toEqual(
-          expect.not.arrayContaining([null])
+          expect.not.arrayContaining([null,undefined])
         );
       });
       it('should be failed due to too young reps.', () => {
         let s = state.init();
-        for(var i=0; i<ENOUGH_POPULATION; i++){
-          s.addCitizen();
-        }
+        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
         s.people = s.people.map(p=>{ p.age = 15; return p; });
         let citizen = s.people[0];
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
@@ -76,9 +89,7 @@ describe('Proposal', () => {
       });
       it('should be successfully initialized.', () => {
         let s = state.init();
-        for(var i=0; i<ENOUGH_POPULATION; i++){
-          s.addCitizen();
-        }
+        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
         s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
         let citizen = s.people[0];
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
@@ -88,7 +99,7 @@ describe('Proposal', () => {
         expect(s.people.length).toBe(ENOUGH_POPULATION);
         expect(proposal.representatives.length).toBe(REPRESENTATIVE_HEADCOUNT);
         expect(proposal.representatives).toEqual(
-          expect.not.arrayContaining([null])
+          expect.not.arrayContaining([null,undefined])
         );
       });
     });
@@ -156,9 +167,7 @@ describe('Proposal', () => {
     context('init and tick', () => {
       it('should be the facilitator assignment phase with IQ <= 50 proposer.', () => {
         let s = state.init();
-        for(var i=0; i<ENOUGH_POPULATION; i++){
-          s.addCitizen();
-        }
+        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
         s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
         let proposer = s.people[0];
         proposer.intelligenceDeviation = 50;
@@ -171,9 +180,7 @@ describe('Proposal', () => {
       });
       it('should be the facilitator assignment phase with IQ > 50 proposer.', () => {
         let s = state.init();
-        for(var i=0; i<ENOUGH_POPULATION; i++){
-          s.addCitizen();
-        }
+        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
         s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
         let proposer = s.people[0];
         proposer.intelligenceDeviation = 50.1;

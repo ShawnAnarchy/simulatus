@@ -35,7 +35,7 @@
   },
   "type": "module",
   "scripts": {
-    "start": "rollup -c && node index.js",
+    "start": "rollup -c && node dist/index.js",
     "test": "jest"
   },
   "repository": {

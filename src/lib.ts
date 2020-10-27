@@ -357,7 +357,7 @@ export class Proposal implements ClockInterface {
     this.facilitator = selectedFacilitator
   }
   pickRepresentatives(){
-    let shuffledPeople = Util.shuffle(state.get().people.filter(p=> (!p.isBusy && 16 <= p.age) ));
+    let shuffledPeople = Util.shuffle(state.get().people.filter(p=> (!p.isBusy && 16 <= p.age) )).filter(x=>x);
     this.representatives = [...Array(this.representativeHeadcount)]
       .map((x,i)=> shuffledPeople[i] )
       .filter(x=>x)
@@ -371,7 +371,8 @@ export class Proposal implements ClockInterface {
   }
   pickProfessionals(){
     this.professionals = this.domains.map(d=>{
-      let candidates = state.get().professionals[d].filter(p=> !p.isBusy )
+      let candidates = state.get().professionals[d].filter(p=> !p.isBusy ).filter(x=>x)
+      if(candidates.length === 0) return;
       let randIndex = Random.number(0, candidates.length-1)
       let selectedProfessional = candidates[randIndex]
       selectedProfessional.isBusy = true;
