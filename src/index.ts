@@ -15,7 +15,7 @@ let trace = Util.trace;
 
 (function(){
   let s = state.get();
-  s.setup(POPULATION);
+  state.setup(POPULATION);
 
   for(var i=0; i<SIMULATE_FOR_DAYS*2; i++){
     s.tick();
