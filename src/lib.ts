@@ -43,6 +43,7 @@ export class StateMachine implements ClockInterface {
   supremeJudges: Array<SupremeJudge>;
   facilitators: Array<Facilitator>;//TODO Map<string, Facilitator>
   professionals: Map<string, Array<Professional>>;
+  deadPeople: Array<Citizen>;
 
 
   constructor(){
@@ -62,6 +63,7 @@ export class StateMachine implements ClockInterface {
     this.supremeJudges = [];
     this.facilitators = [];
     this.professionals = new Map<string,Array<Professional>>();
+    this.deadPeople = [];
   }
 
   payTax(amount){
@@ -79,9 +81,15 @@ export class StateMachine implements ClockInterface {
     this.people.push(citizen);
     return citizen;
   }
-  removeCitizen(citizenId){
-    let index = this.people.map((c,i) => c.id == citizenId ? i : 0).reduce((s,i)=> s+i,0)
-    this.people.splice(index, 1);
+  removeCitizen(citizen){
+    this.people = this.people.map((p,i) => {
+      if(p.id === citizen.id){
+        this.deadPeople.push(citizen);
+        return;
+      } else {
+        return p;
+      }
+    }).filter(x=>x);
   }
   addSupremeJudge(judge){
     this.supremeJudges.push(judge)
@@ -498,7 +506,7 @@ export class Citizen implements ClockInterface {
     this.passivePoliticalAction(context)
     
     if(context.code === LifeStage.DEATH){
-      state.get().removeCitizen(this.id)
+      state.get().removeCitizen(this)
     }
 
     this.age += TICKING_TIME/365

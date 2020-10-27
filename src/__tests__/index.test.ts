@@ -53,11 +53,11 @@ describe('StateMachine', () => {
     it('should not assign a citizen for multiple proposals at once.', () => {
       let s = state.init();
       state.setup(POPULATION);
+      expect(s.people.length+s.deadPeople.length).toBe(POPULATION)
       for(var i=0; i<SIMULATE_FOR_DAYS*2; i++){
         s.tick();
       }
-      expect(s.people.length).toBe(POPULATION)
-
+      expect(s.people.length+s.deadPeople.length).toBe(POPULATION)
     })
   })
 })
