@@ -40,6 +40,5 @@ let trace = Util.trace;
   for(var i=0; i<SIMULATE_FOR_DAYS*2; i++){
     s.tick();
   }
-
   trace(s)
 })()

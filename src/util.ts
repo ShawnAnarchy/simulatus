@@ -27,6 +27,7 @@ export function trace(...args:any[]):void {
   } else if (args.length === 1) {
     str = stringify(args[0])
   }
+  if(str === 'undefined' || str === undefined ) throw new Error('stringify failed')
 
   let now = Date.now()
   fs.writeFileSync(`./logs/${now}`,  str);
@@ -36,13 +37,22 @@ export function trace(...args:any[]):void {
 export function stringify(circ){
   // Note: cache should not be re-used by repeated calls to JSON.stringify.
   var cache = [];
+  let count:any = {};
   let res =JSON.stringify(circ, (key, value) => {
+    count[key] = 0;
     if (typeof value === 'object' && value !== null) {
       // Duplicate reference found, discard key
-      if (cache.includes(value)) return;
-
-      // Store value in our collection
-      cache.push(value);
+      if (cache.includes(value) && count[key] === 0) {
+        // add count
+        count[key] += 1;
+        // Store value in our collection
+        cache.push(value);
+        return value;
+      } else if (cache.includes(value) && count[key] > 0) {
+        return;
+      } else {
+        cache.push(value);
+      }
     }
     return value;
   });

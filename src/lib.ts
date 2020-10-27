@@ -143,6 +143,7 @@ export class StateMachine implements ClockInterface {
   }
   approveProposal(proposal){
     this.miscellaneousAdministrations.push(proposal.administrationToBeCreated)
+    this.miscellaneousAdministrations = this.miscellaneousAdministrations.filter(x=>x)
     //TODO: Reward for participants
     //TODO: There's no tie between admin and vestedMonthlyBudget
   }
@@ -357,10 +358,17 @@ export class Proposal implements ClockInterface {
     this.facilitator = selectedFacilitator
   }
   pickRepresentatives(){
-    let shuffledPeople = Util.shuffle(state.get().people.filter(p=> (!p.isBusy && 16 <= p.age) )).filter(x=>x);
-    this.representatives = [...Array(this.representativeHeadcount)]
+    let shuffledPeople = Util.shuffle(
+        state.get().people
+          .filter(p=> (!p.isBusy && 16 <= p.age) )
+    ).filter(x=>x);
+    if(shuffledPeople.length < 30) {
+      this.representatives = [];
+    } else {
+      this.representatives = [...Array(this.representativeHeadcount)]
       .map((x,i)=> shuffledPeople[i] )
       .filter(x=>x)
+    }
   }
   pickDomains(){
     let rand = Random.number(0, state.get().domains.length-1);
@@ -581,7 +589,7 @@ export class Citizen implements ClockInterface {
   passivePoliticalAction(context){
     // skip: passive action is automatic in the simulator
   }
-  affectByDeliberation(point){
+  affectByDeliberation(point):Citizen{
     this.intelligenceDeviation += point
     this.conspiracyPreference -= point
     this.cultPreference -= point
