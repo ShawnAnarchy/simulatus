@@ -149,9 +149,13 @@ export class StateMachine implements ClockInterface {
   }
   updateProposal(proposal){
     let pid = proposal.id;
-    let index = this.proposals.map((p,i)=> p.id === pid ? i : 0).reduce((s,i)=> s+i, 0)
-    this.proposals.splice(index, 1)
-    this.proposals.push(proposal)
+    this.proposals = this.proposals.map((p,i)=>{
+      if(p.id === pid){
+        return proposal;
+      } else {
+        return p;
+      }
+    });
 
     let participants = [proposal.proposer].concat(proposal.representatives).concat(proposal.professionals);
     if(proposal.facilitator) participants.push(proposal.facilitator)
@@ -162,6 +166,15 @@ export class StateMachine implements ClockInterface {
     })
     participants.map(p=>{
       this.people.push(p);
+    })
+  }
+  updateCitizen(citizen){
+    this.people = this.people.map(p=>{
+      if(p.id == citizen.id){
+        return citizen;
+      } else {
+        return p;
+      }
     })
   }
 }
@@ -363,11 +376,16 @@ export class Proposal implements ClockInterface {
           .filter(p=> (!p.isBusy && 16 <= p.age) )
     ).filter(x=>x);
     if(shuffledPeople.length < 30) {
-      this.representatives = [];
+      // this.representatives = [];
+      this.finishProposal();
     } else {
       this.representatives = [...Array(this.representativeHeadcount)]
-      .map((x,i)=> shuffledPeople[i] )
-      .filter(x=>x)
+      .map((x,i)=>{
+        let p = shuffledPeople[i]
+        p.isBusy = true;
+        state.get().updateCitizen(p);
+        return p;
+      })
     }
   }
   pickDomains(){

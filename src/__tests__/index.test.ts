@@ -41,6 +41,13 @@ describe('StateMachine', () => {
       );
     })
   })
+  describe('people', () => {
+    it('should not have conflict.', () => {
+      let s = state.init();
+      for(var i=0; i<POPULATION; i++) s.addCitizen();
+      expect(s.people.length).toBe(Util.uniq(s.people.map(p=>p.id)).length)
+    })
+  })
   describe('tick', () => {
     it('should remain isFinished=false proposal.', () => {
     })
@@ -63,6 +70,7 @@ describe('Proposal', () => {
         expect(proposal.representatives).toEqual(
           expect.not.arrayContaining([null,undefined])
         );
+        expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(0);
       });
       it('should be failed due to busy citizens.', () => {
         let s = state.init();
@@ -78,6 +86,7 @@ describe('Proposal', () => {
         expect(proposal.representatives).toEqual(
           expect.not.arrayContaining([null,undefined])
         );
+        expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(0);
       });
       it('should be failed due to too young reps.', () => {
         let s = state.init();
@@ -90,6 +99,7 @@ describe('Proposal', () => {
         expect(s.proposals.length).toBe(1);
         expect(s.people.length).toBe(ENOUGH_POPULATION);
         expect(proposal.representatives.length).toBeLessThan(REPRESENTATIVE_HEADCOUNT);
+        expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(0);
       });
       it('should be successfully initialized.', () => {
         let s = state.init();
@@ -105,6 +115,7 @@ describe('Proposal', () => {
         expect(proposal.representatives).toEqual(
           expect.not.arrayContaining([null,undefined])
         );
+        expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
     });
     context('ProposalPhases.FACILITATOR_ASSIGNMENT', () => {
@@ -116,6 +127,7 @@ describe('Proposal', () => {
         expect(validationResult.code).toBe(ProposalPhases.FACILITATOR_ASSIGNMENT);
         expect(s.proposals.length).toBe(1);
         expect(s.people.length).toBe(ENOUGH_POPULATION);
+        expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
     });
     context('ProposalPhases.DOMAIN_ASSIGNMENT', () => {
@@ -126,6 +138,7 @@ describe('Proposal', () => {
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.DOMAIN_ASSIGNMENT);
         expect(s.people.length).toBe(ENOUGH_POPULATION+1);
+        expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
     });
     context('ProposalPhases.PROFESSIONAL_ASSIGNMENT', () => {
@@ -135,6 +148,7 @@ describe('Proposal', () => {
         let proposal = s.proposals[0];
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.PROFESSIONAL_ASSIGNMENT);
+        expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
     });
     context('ProposalPhases.DELIBERATION', () => {
@@ -146,6 +160,7 @@ describe('Proposal', () => {
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.DELIBERATION);
         expect(s.people.length).toBe(ENOUGH_POPULATION+2);
+        expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
     });
     context('ProposalPhases.FINAL_JUDGE', () => {
@@ -155,6 +170,7 @@ describe('Proposal', () => {
         let proposal = s.proposals[0];
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.FINAL_JUDGE);
+        expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
     });
     context('ProposalPhases.FINISHED', () => {
@@ -172,7 +188,12 @@ describe('Proposal', () => {
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.FINISHED);
         expect(s.miscellaneousAdministrations.length).toBeGreaterThan(0);
+        expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(0);
       });
+      it('No id confliction after a proposal', ()=>{
+        let s = state.get();
+        expect(s.people.length).toBe(Util.uniq(s.people.map(p=>p.id)).length)
+      })
     });
   })
   describe('tick', () => {
@@ -189,7 +210,7 @@ describe('Proposal', () => {
         expect(proposal.validate().code).toBe(ProposalPhases.FINISHED);
         expect(proposal.isFinished).toBe(true);
         expect(proposal.proposer.isBusy).toBe(false);
-        expect(s.people[0].isBusy).toBe(false);
+        expect(s.people.filter(p=> p.id === proposal.proposer.id )[0].isBusy).toBe(false);
       });
       it('should be the facilitator assignment phase with IQ > 50 proposer.', () => {
         let s = state.init();

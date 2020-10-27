@@ -63,3 +63,10 @@ export function stringify(circ){
 export function squash(arr){
   return arr.filter(function(val) { return val !== null; }).join(", ")
 }
+export function uniq(array) {
+  const knownElements = new Set();
+  for (const elem of array) {
+    knownElements.add(elem); // 同じ値を何度追加しても問題ない
+  }
+  return Array.from(knownElements);
+}
