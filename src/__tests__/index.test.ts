@@ -39,7 +39,11 @@ describe('StateMachine', () => {
       expect(s.proposals[0].representatives).toEqual(
         expect.not.arrayContaining([null,undefined])
       );
+    })
   })
+  describe('tick', () => {
+    it('should remain isFinished=false proposal.', () => {
+    })
   })
 })
 
@@ -154,12 +158,20 @@ describe('Proposal', () => {
       });
     });
     context('ProposalPhases.FINISHED', () => {
-      it('should be true.', () => {
+      it('should be true and a miscellaneousAdministration should be added.', () => {
         let s = state.get();
+        s.proposals[0].representatives = s.proposals[0].representatives.map(r=>{
+          r.humanrightsPreference = 1000;
+          r.progressismPreference = 1000;
+          return r;
+        });
+        s.proposals[0].humanrightsDegree = 100;
+        s.proposals[0].progressismDegree = 100;
         let proposal = s.proposals[0];
         proposal.tick();
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.FINISHED);
+        expect(s.miscellaneousAdministrations.length).toBeGreaterThan(0);
       });
     });
   })
@@ -171,11 +183,12 @@ describe('Proposal', () => {
         s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
         let proposer = s.people[0];
         proposer.intelligenceDeviation = 50;
-        s.submitProposal(proposer, ProblemTypes.NORMAL);
+        let proposal = s.submitProposal(proposer, ProblemTypes.NORMAL);
         s.tick();
-        expect(s.proposals[0].validate().code).toBe(ProposalPhases.FINISHED);
-        expect(s.proposals[0].isFinished).toBe(true);
-        expect(s.proposals[0].proposer.isBusy).toBe(false);
+
+        expect(proposal.validate().code).toBe(ProposalPhases.FINISHED);
+        expect(proposal.isFinished).toBe(true);
+        expect(proposal.proposer.isBusy).toBe(false);
         expect(s.people[0].isBusy).toBe(false);
       });
       it('should be the facilitator assignment phase with IQ > 50 proposer.', () => {
