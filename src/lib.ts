@@ -8,7 +8,8 @@ import {
   PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN,
   SUPREME_JUDGES_INITIAL_HEADCCOUNT,
   UPPERBOUND,
-  LOWERBOUND } from './const'
+  LOWERBOUND,
+  REPRESENTATIVE_HEADCOUNT } from './const'
 let squash = Util.squash;
 
 
@@ -203,6 +204,7 @@ export const enum ProposalPhases {
   PROFESSIONAL_ASSIGNMENT = 'pa',
   DELIBERATION = 'd',
   FINAL_JUDGE = 'f',
+  FINISHED = 'fi',
   HEADCOUNT_EXCEEDED = 'h',
   UNKNOWN_ERROR = "ue"
 }
@@ -233,9 +235,9 @@ export class Proposal implements ClockInterface {
     this.professionals = [];
     this.durationDays = this.getDurationDays();
     this.spentDays = 0;
-    this.representativeHeadcount = 30;
-    this.representatives = []
-    this.pickRepresentatives()
+    this.representativeHeadcount = REPRESENTATIVE_HEADCOUNT;
+    this.representatives = [];
+    this.pickRepresentatives();
     this.progressismDegree = 30 + Random.number(0, 60)
     this.humanrightsDegree = 30 + Random.number(0, 60)
     this.administrationToBeCreated = new Administration()
@@ -303,7 +305,7 @@ export class Proposal implements ClockInterface {
             res = true
           }
           return res;
-        }).length
+        }).length;
         if(forCount > this.representatives.length/2){
           state.get().approveProposal(this);
           this.finishProposal();
@@ -313,27 +315,31 @@ export class Proposal implements ClockInterface {
         break;
       case ProposalPhases.HEADCOUNT_EXCEEDED:
         break;
+      case ProposalPhases.FINISHED:
+        break;
     }
     this.spentDays += TICKING_TIME
   }
   validate(){
-    if(this.spentDays === 0) {
+    if(this.spentDays === 0 && this.representatives.length === REPRESENTATIVE_HEADCOUNT && !this.isFinished) {
       return { code: ProposalPhases.INITIAL_JUDGE, report: "" }
-    } else if(0 < this.spentDays && !this.facilitator && this.spentDays < this.durationDays) {
+    } else if(0 < this.spentDays && this.representatives.length  === REPRESENTATIVE_HEADCOUNT && !this.facilitator && this.spentDays < this.durationDays && !this.isFinished) {
       return { code: ProposalPhases.FACILITATOR_ASSIGNMENT, report: "" }
-    } else if(!!this.facilitator && this.domains.length === 0 && this.spentDays < this.durationDays) {
+    } else if(this.representatives.length === REPRESENTATIVE_HEADCOUNT && !!this.facilitator && this.domains.length === 0 && this.spentDays < this.durationDays && !this.isFinished) {
       return { code: ProposalPhases.DOMAIN_ASSIGNMENT, report: "" }
-    } else if(!!this.facilitator && this.domains.length > 0 && this.professionals.length === 0 && this.spentDays < this.durationDays) {
+    } else if(this.representatives.length === REPRESENTATIVE_HEADCOUNT && !!this.facilitator && this.domains.length > 0 && this.professionals.length === 0 && this.spentDays < this.durationDays && !this.isFinished) {
       return { code: ProposalPhases.PROFESSIONAL_ASSIGNMENT, report: "" }
-    } else if(!!this.facilitator && this.domains.length > 0 && this.professionals.length > 0 && this.spentDays < this.durationDays) {
+    } else if(this.representatives.length === REPRESENTATIVE_HEADCOUNT && !!this.facilitator && this.domains.length > 0 && this.professionals.length > 0 && this.spentDays < this.durationDays && !this.isFinished) {
       return { code: ProposalPhases.DELIBERATION, report: "" }  
-    } else if(!!this.facilitator && this.domains.length > 0 && this.professionals.length > 0 && this.spentDays === this.durationDays) {
+    } else if(this.representatives.length === REPRESENTATIVE_HEADCOUNT && !!this.facilitator && this.domains.length > 0 && this.professionals.length > 0 && this.spentDays === this.durationDays && !this.isFinished) {
       return { code: ProposalPhases.FINAL_JUDGE, report: "" }
     } else if(this.representatives.length > this.representativeHeadcount) {
       return {
         code: ProposalPhases.HEADCOUNT_EXCEEDED,
         report: `this.representatives.length=${this.representatives.length} and this.representativeHeadcount=${this.representativeHeadcount}`
       }  
+    } else if(this.representatives.length === REPRESENTATIVE_HEADCOUNT &&this.isFinished) {
+      return { code: ProposalPhases.FINISHED, report: `` }  
     } else {
       return {
         code: ProposalPhases.UNKNOWN_ERROR,
@@ -351,24 +357,28 @@ export class Proposal implements ClockInterface {
     this.facilitator = selectedFacilitator
   }
   pickRepresentatives(){
-    let rand = Random.number(0, this.representativeHeadcount-1);
     let shuffledPeople = Util.shuffle(state.get().people.filter(p=> (!p.isBusy && 16 <= p.age) ));
-    [...Array(rand)].map((x,i)=> this.representatives.push(shuffledPeople[i])  );
+    this.representatives = [...Array(this.representativeHeadcount)]
+      .map((x,i)=> shuffledPeople[i] )
+      .filter(x=>x)
   }
   pickDomains(){
     let rand = Random.number(0, state.get().domains.length-1);
     let shuffledDomains = Util.shuffle(state.get().domains);
-    [...Array(rand)].map((x,i)=> this.domains.push(shuffledDomains[i])  );
+    this.domains = [...Array(rand)]
+      .map((x,i)=> shuffledDomains[i] )
+      .filter(x=>x)
   }
   pickProfessionals(){
-    this.domains.map(d=>{
+    this.professionals = this.domains.map(d=>{
       let candidates = state.get().professionals[d].filter(p=> !p.isBusy )
       let randIndex = Random.number(0, candidates.length-1)
       let selectedProfessional = candidates[randIndex]
       selectedProfessional.isBusy = true;
       state.get().professionals[d][randIndex] = selectedProfessional;
-      this.professionals.push( selectedProfessional )
+      return selectedProfessional;
     })
+    .filter(x=>x)
   }
   modificationRequests(){
     this.progressismDegree += Random.number(0, 7) - Random.number(0, 5)

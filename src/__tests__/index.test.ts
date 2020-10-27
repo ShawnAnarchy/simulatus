@@ -6,9 +6,11 @@ import {
   PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN,
   SUPREME_JUDGES_INITIAL_HEADCCOUNT,
   UPPERBOUND,
-  LOWERBOUND } from '../const';
+  LOWERBOUND,
+  REPRESENTATIVE_HEADCOUNT } from '../const';
 
 const TEST_DOMAIN = 'test_domain';
+const ENOUGH_POPULATION = 200;
 
 import * as Random from '../random';
 import * as Util from '../util';
@@ -28,14 +30,66 @@ describe('Proposal', () => {
   describe('validate', () => {
 
     context('ProposalPhases.INITIAL_JUDGE', () => {
-      it('should be initialized.', () => {
+      it('should be failed due to the lack of reps.', () => {
         let s = state.init();
         let citizen = s.addCitizen();
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
         let validationResult = proposal.validate();
-        expect(validationResult.code).toBe(ProposalPhases.INITIAL_JUDGE);
+        expect(validationResult.code).toBe(ProposalPhases.UNKNOWN_ERROR);
         expect(s.proposals.length).toBe(1);
         expect(s.people.length).toBe(1);
+        expect(proposal.representatives.length).toBeLessThan(REPRESENTATIVE_HEADCOUNT);
+        expect(proposal.representatives).toEqual(
+          expect.not.arrayContaining([null])
+        );
+      });
+      it('should be failed due to busy citizens.', () => {
+        let s = state.init();
+        for(var i=0; i<ENOUGH_POPULATION; i++){
+          s.addCitizen();
+        }
+        s.people = s.people.map(p=>{ p.isBusy = true; return p; });
+        let citizen = s.people[0];
+        let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
+        let validationResult = proposal.validate();
+        expect(validationResult.code).toBe(ProposalPhases.UNKNOWN_ERROR);
+        expect(s.proposals.length).toBe(1);
+        expect(s.people.length).toBe(ENOUGH_POPULATION);
+        expect(proposal.representatives.length).toBeLessThan(REPRESENTATIVE_HEADCOUNT);
+        expect(proposal.representatives).toEqual(
+          expect.not.arrayContaining([null])
+        );
+      });
+      it('should be failed due to too young reps.', () => {
+        let s = state.init();
+        for(var i=0; i<ENOUGH_POPULATION; i++){
+          s.addCitizen();
+        }
+        s.people = s.people.map(p=>{ p.age = 15; return p; });
+        let citizen = s.people[0];
+        let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
+        let validationResult = proposal.validate();
+        expect(validationResult.code).toBe(ProposalPhases.UNKNOWN_ERROR);
+        expect(s.proposals.length).toBe(1);
+        expect(s.people.length).toBe(ENOUGH_POPULATION);
+        expect(proposal.representatives.length).toBeLessThan(REPRESENTATIVE_HEADCOUNT);
+      });
+      it('should be successfully initialized.', () => {
+        let s = state.init();
+        for(var i=0; i<ENOUGH_POPULATION; i++){
+          s.addCitizen();
+        }
+        s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
+        let citizen = s.people[0];
+        let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
+        let validationResult = proposal.validate();
+        expect(validationResult.code).toBe(ProposalPhases.INITIAL_JUDGE);
+        expect(s.proposals.length).toBe(1);
+        expect(s.people.length).toBe(ENOUGH_POPULATION);
+        expect(proposal.representatives.length).toBe(REPRESENTATIVE_HEADCOUNT);
+        expect(proposal.representatives).toEqual(
+          expect.not.arrayContaining([null])
+        );
       });
     });
     context('ProposalPhases.FACILITATOR_ASSIGNMENT', () => {
@@ -46,7 +100,7 @@ describe('Proposal', () => {
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.FACILITATOR_ASSIGNMENT);
         expect(s.proposals.length).toBe(1);
-        expect(s.people.length).toBe(1);
+        expect(s.people.length).toBe(ENOUGH_POPULATION);
       });
     });
     context('ProposalPhases.DOMAIN_ASSIGNMENT', () => {
@@ -56,7 +110,7 @@ describe('Proposal', () => {
         let proposal = s.proposals[0];
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.DOMAIN_ASSIGNMENT);
-        expect(s.people.length).toBe(2);
+        expect(s.people.length).toBe(ENOUGH_POPULATION+1);
       });
     });
     context('ProposalPhases.PROFESSIONAL_ASSIGNMENT', () => {
@@ -76,7 +130,7 @@ describe('Proposal', () => {
         let proposal = s.proposals[0];
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.DELIBERATION);
-        expect(s.people.length).toBe(3);
+        expect(s.people.length).toBe(ENOUGH_POPULATION+2);
       });
     });
     context('ProposalPhases.FINAL_JUDGE', () => {
@@ -88,17 +142,44 @@ describe('Proposal', () => {
         expect(validationResult.code).toBe(ProposalPhases.FINAL_JUDGE);
       });
     });
+    context('ProposalPhases.FINISHED', () => {
+      it('should be true.', () => {
+        let s = state.get();
+        let proposal = s.proposals[0];
+        proposal.tick();
+        let validationResult = proposal.validate();
+        expect(validationResult.code).toBe(ProposalPhases.FINISHED);
+      });
+    });
   })
   describe('tick', () => {
-    context('ProposalPhases.INITIAL_JUDGE', () => {
-      it('should be initialized.', () => {
+    context('init and tick', () => {
+      it('should be the facilitator assignment phase with IQ <= 50 proposer.', () => {
         let s = state.init();
-        let citizen = s.addCitizen();
-        let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
-        let validationResult = proposal.validate();
-        expect(validationResult.code).toBe(ProposalPhases.INITIAL_JUDGE);
-        expect(s.proposals.length).toBe(1);
-        expect(s.people.length).toBe(1);
+        for(var i=0; i<ENOUGH_POPULATION; i++){
+          s.addCitizen();
+        }
+        s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
+        let proposer = s.people[0];
+        proposer.intelligenceDeviation = 50;
+        s.submitProposal(proposer, ProblemTypes.NORMAL);
+        s.tick();
+        expect(s.proposals[0].validate().code).toBe(ProposalPhases.FINISHED);
+        expect(s.proposals[0].isFinished).toBe(true);
+        expect(s.proposals[0].proposer.isBusy).toBe(false);
+        expect(s.people[0].isBusy).toBe(false);
+      });
+      it('should be the facilitator assignment phase with IQ > 50 proposer.', () => {
+        let s = state.init();
+        for(var i=0; i<ENOUGH_POPULATION; i++){
+          s.addCitizen();
+        }
+        s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
+        let proposer = s.people[0];
+        proposer.intelligenceDeviation = 50.1;
+        s.submitProposal(proposer, ProblemTypes.NORMAL);
+        s.tick();
+        expect(s.proposals[0].validate().code).toBe(ProposalPhases.FACILITATOR_ASSIGNMENT);
       });
     });
   })
