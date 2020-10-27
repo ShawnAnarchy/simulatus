@@ -6,7 +6,7 @@
  */
 
 // import * as cspRand from "csprng";
-import cspRand from "csprng";
+import { randomBytes } from "crypto";
 
 const base64 =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -40,6 +40,12 @@ export function string(length: number = 6): string {
 }
 
 // get uuid by pseudo-random generator
-export function uuid(i:number): string {
-  return cspRand(160, 36);
+export function uuid(length: number = 21): string {
+  let res: string = "";
+  const random: Uint8Array = randomBytes(length);
+
+  while (length--) {
+    res += base64[random[length] & 0x3f];
+  }
+  return res;
 }
