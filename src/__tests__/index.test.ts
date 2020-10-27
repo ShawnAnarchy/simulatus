@@ -44,12 +44,20 @@ describe('StateMachine', () => {
   describe('people', () => {
     it('should not have conflict.', () => {
       let s = state.init();
-      for(var i=0; i<POPULATION; i++) s.addCitizen();
-      expect(s.people.length).toBe(Util.uniq(s.people.map(p=>p.id)).length)
+      for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
+      expect(s.people.length).toBe(ENOUGH_POPULATION)
+      expect(Util.uniq(s.people.map(p=>p.id)).length).toBe(ENOUGH_POPULATION)
     })
   })
-  describe('tick', () => {
-    it('should remain isFinished=false proposal.', () => {
+  describe('multi-round tests', () => {
+    it('should not assign a citizen for multiple proposals at once.', () => {
+      let s = state.init();
+      state.setup(POPULATION);
+      for(var i=0; i<SIMULATE_FOR_DAYS*2; i++){
+        s.tick();
+      }
+      expect(s.people.length).toBe(POPULATION)
+
     })
   })
 })
@@ -133,11 +141,11 @@ describe('Proposal', () => {
     context('ProposalPhases.DOMAIN_ASSIGNMENT', () => {
       it('should be true.', () => {
         let s = state.get();
-        s.proposals[0].facilitator = new Facilitator(s.addCitizen());
+        s.proposals[0].facilitator = new Facilitator(s.people[0]);
         let proposal = s.proposals[0];
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.DOMAIN_ASSIGNMENT);
-        expect(s.people.length).toBe(ENOUGH_POPULATION+1);
+        expect(s.people.length).toBe(ENOUGH_POPULATION);
         expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
     });
@@ -150,18 +158,24 @@ describe('Proposal', () => {
         expect(validationResult.code).toBe(ProposalPhases.PROFESSIONAL_ASSIGNMENT);
         expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
+      it('No id confliction after a proposal', ()=>{
+        expect(Util.uniq(state.get().people.map(p=>p.id)).length).toBe(ENOUGH_POPULATION)
+      })
     });
     context('ProposalPhases.DELIBERATION', () => {
       it('should be true.', () => {
         let s = state.get();
-        s.professionals[TEST_DOMAIN] = [s.addCitizen()];
+        s.professionals[TEST_DOMAIN] = [s.people[0]];
         s.proposals[0].professionals = [s.professionals[TEST_DOMAIN][0]];
         let proposal = s.proposals[0];
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.DELIBERATION);
-        expect(s.people.length).toBe(ENOUGH_POPULATION+2);
+        expect(s.people.length).toBe(ENOUGH_POPULATION);
         expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
+      it('No id confliction after a proposal', ()=>{
+        expect(Util.uniq(state.get().people.map(p=>p.id)).length).toBe(ENOUGH_POPULATION)
+      })
     });
     context('ProposalPhases.FINAL_JUDGE', () => {
       it('should be true.', () => {
@@ -172,6 +186,9 @@ describe('Proposal', () => {
         expect(validationResult.code).toBe(ProposalPhases.FINAL_JUDGE);
         expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
+      it('No id confliction after a proposal', ()=>{
+        expect(Util.uniq(state.get().people.map(p=>p.id)).length).toBe(ENOUGH_POPULATION)
+      })
     });
     context('ProposalPhases.FINISHED', () => {
       it('should be true and a miscellaneousAdministration should be added.', () => {
@@ -191,26 +208,29 @@ describe('Proposal', () => {
         expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(0);
       });
       it('No id confliction after a proposal', ()=>{
-        let s = state.get();
-        expect(s.people.length).toBe(Util.uniq(s.people.map(p=>p.id)).length)
+        expect(Util.uniq(state.get().people.map(p=>p.id)).length).toBe(ENOUGH_POPULATION)
+      })
+      it('should be consistent regarding population', ()=>{
+        expect(state.get().people.length).toBe(ENOUGH_POPULATION)
       })
     });
   })
   describe('tick', () => {
     context('init and tick', () => {
-      it('should be the facilitator assignment phase with IQ <= 50 proposer.', () => {
+      it('should be the finished phase with IQ <= 50 proposer.', () => {
         let s = state.init();
         for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
         s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
         let proposer = s.people[0];
         proposer.intelligenceDeviation = 50;
         let proposal = s.submitProposal(proposer, ProblemTypes.NORMAL);
+        expect(proposal.proposer.isBusy).toBe(true);
+        expect(s.people[0].isBusy).toBe(true);
         s.tick();
-
         expect(proposal.validate().code).toBe(ProposalPhases.FINISHED);
         expect(proposal.isFinished).toBe(true);
         expect(proposal.proposer.isBusy).toBe(false);
-        expect(s.people.filter(p=> p.id === proposal.proposer.id )[0].isBusy).toBe(false);
+        expect(s.people[0].isBusy).toBe(false);
       });
       it('should be the facilitator assignment phase with IQ > 50 proposer.', () => {
         let s = state.init();

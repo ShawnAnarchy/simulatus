@@ -156,21 +156,17 @@ export class StateMachine implements ClockInterface {
         return p;
       }
     });
-
-    let participants = [proposal.proposer].concat(proposal.representatives).concat(proposal.professionals);
-    if(proposal.facilitator) participants.push(proposal.facilitator)
-    let partIds = participants.map(p=>p.id)
-    partIds.map(partId=>{
-      let partIndex = this.people.map((p,i)=> p.id === partId ? i : 0).reduce((s,i)=> s+i, 0)
-      this.people.splice(partIndex, 1);
-    })
-    participants.map(p=>{
-      this.people.push(p);
-    })
+  }
+  updateProposalWithParticipants(proposal){
+    this.updateProposal(proposal);
+    this.updateCitizen(proposal.proposer);
+    proposal.representatives.map(r=> this.updateCitizen(r) );
+    proposal.professionals.map(p=> this.updateCitizen(p) );
+    if(proposal.facilitator) this.updateCitizen(proposal.facilitator);
   }
   updateCitizen(citizen){
     this.people = this.people.map(p=>{
-      if(p.id == citizen.id){
+      if(p.id === citizen.id){
         return citizen;
       } else {
         return p;
@@ -186,12 +182,16 @@ export let state = (() => {
     return object;
   }
 
+  function _get(){
+    if (!instance) {
+      instance = createInstance();
+    }
+    return instance;
+  }
+
   return {
     get: ()=>{
-      if (!instance) {
-        instance = createInstance();
-      }
-      return instance;
+      return _get();
     },
     set: _state=>{
       instance = _state
@@ -199,7 +199,34 @@ export let state = (() => {
     init: ()=>{
       instance = createInstance();
       return instance;
+    },
+    setup: (population:number)=>{
+      let s = _get();
+      for(var i=0; i<population; i++){
+        s.addCitizen()
+      }
+      s.addDomain('finance')
+      s.addDomain('military')
+      s.addDomain('publicSafety')
+      s.addDomain('physics')
+      s.addDomain('biology')
+      for(var i=0; i<FACILITATORS_INITIAL_HEADCCOUNT; i++){
+        let candidate = s.people[Random.number(0, s.people.length-1)]
+        s.addFacilitator(new Facilitator(candidate))
+      }
+      for(var i=0; i<SUPREME_JUDGES_INITIAL_HEADCCOUNT; i++){
+        let candidate = s.people[Random.number(0, s.people.length-1)]
+        s.addSupremeJudge(new SupremeJudge(candidate))
+      }
+      for(var i=0; i<PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN; i++){
+        for(var j=0; j<s.domains.length; j++){
+          let candidate = s.people[Random.number(0, s.people.length-1)]
+          s.addProfessional(s.domains[j], new Professional(candidate))
+        }
+      }
+      return s;
     }
+    
   }
 })();
 
@@ -243,7 +270,7 @@ export class Proposal implements ClockInterface {
   constructor(proposer, problemType){
     this.id = Random.uuid(40);
     this.problemType = problemType;
-    this.proposer = proposer;
+    this.proposer = this.assignProposer(proposer);
     this.facilitator = null;
     this.domains = [];
     this.professionals = [];
@@ -278,7 +305,7 @@ export class Proposal implements ClockInterface {
     this.representatives = this.representatives.map(r=>{ r.isBusy = false; return r; });
     if(this.facilitator) this.facilitator.isBusy = false;
     this.professionals = this.professionals.map(p=>{ p.isBusy = false; return p; });
-    state.get().updateProposal(this);
+    state.get().updateProposalWithParticipants(this);
   }
 
   tick(){
@@ -362,6 +389,11 @@ export class Proposal implements ClockInterface {
   
     }
   }
+  assignProposer(proposer){
+    proposer.isBusy = true;
+    state.get().updateCitizen(proposer);
+    return proposer;
+  }
   pickFacilitator(){
     let candidates = state.get().facilitators.filter(f=> !f.isBusy )
     let randIndex = Random.number(0, candidates.length-1)
@@ -369,6 +401,7 @@ export class Proposal implements ClockInterface {
     selectedFacilitator.isBusy = true
     state.get().facilitators[randIndex] = selectedFacilitator
     this.facilitator = selectedFacilitator
+    state.get().updateCitizen(selectedFacilitator);
   }
   pickRepresentatives(){
     let shuffledPeople = Util.shuffle(
@@ -403,6 +436,7 @@ export class Proposal implements ClockInterface {
       let selectedProfessional = candidates[randIndex]
       selectedProfessional.isBusy = true;
       state.get().professionals[d][randIndex] = selectedProfessional;
+      state.get().updateCitizen(selectedProfessional);
       return selectedProfessional;
     })
     .filter(x=>x)
