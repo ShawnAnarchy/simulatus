@@ -662,6 +662,7 @@ export class Citizen implements ClockInterface {
 }
 class CorruptionResistantOfficer extends Citizen {
   constructor(candidate: Citizen){
+    if(candidate.isBusy) throw new Error('Busy person must not be a CorruptionResistantOfficer');
     let s = state.get();
     super();
     this.isBusy = candidate.isBusy;
@@ -714,5 +715,6 @@ export class Snapshot {
   static save(tick){
     appendRecord('population', `day${tick}`, state.get().people.length);
     appendRecord('population_isBusy', `day${tick}`, state.get().people.filter(p=>p.isBusy).length);
+    appendRecord('num_facilitator', `day${tick}`, state.get().facilitators.length);
   }
 }

@@ -35,7 +35,7 @@ export function trace(...args:any[]):void {
 }
 
 export function appendRecord(dest:string, key:string, value:number):void {
-  let filename = `./distfront/records/${dest}`;
+  let filename = `./frontend/records/${dest}`;
   let record:any = fetchRecord(dest);
   let str = "";
   let obj = {};
@@ -50,7 +50,7 @@ export function appendRecord(dest:string, key:string, value:number):void {
   childProcess.execSync(`cat ${filename} | jq . > ${filename}.json && rm ${filename}`)
 }
 export function fetchRecord(dest){
-  let filename = `./distfront/records/${dest}.json`;
+  let filename = `./frontend/records/${dest}.json`;
   if(fs.existsSync(filename)){
     let str = fs.readFileSync(filename).toString();
     return str.length > 0 ? JSON.parse(str) : str;
@@ -59,7 +59,7 @@ export function fetchRecord(dest){
   }
 }
 export function deleteRecord(dest){
-  let filename = `./distfront/records/${dest}.json`;
+  let filename = `./frontend/records/${dest}.json`;
   if(fs.existsSync(filename)){
     fs.writeFileSync(filename, "");
   } else {

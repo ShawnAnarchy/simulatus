@@ -96,6 +96,15 @@ describe('Snapshot', () => {
         expect(record.day3).toBe(1);
       })
       it('should add a record to the file storage for # of facilitator', () => {
+        let s = state.get();
+        s.people[0].isBusy = false;
+        s.addFacilitator(new Facilitator(s.people[0]))
+        Snapshot.save(4);
+        let record = fetchRecord('num_facilitator');
+        expect(record.day1).toBe(0);
+        expect(record.day2).toBe(0);
+        expect(record.day3).toBe(0);
+        expect(record.day4).toBe(1);
       })
       it('should add a record to the file storage for # of professionals', () => {
       })

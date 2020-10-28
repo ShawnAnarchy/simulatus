@@ -8,7 +8,7 @@ const ctx = document.getElementById('myChart').getContext('2d');
 
 export class Graph {
 
-  line(title, keyValues:{ [key: string]: number } ){
+  line(title, keyValues:any){
     var myLineChart = new Chart(ctx, {
       type: 'line',
       data: {

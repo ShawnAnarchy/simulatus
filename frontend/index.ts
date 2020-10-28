@@ -1,12 +1,8 @@
 import { Graph } from './graph';
+import poplutionRecord from './records/population.json';
+
 let graph = new Graph();
 
 (()=>{
-  graph.line('Population',
-    {
-    'day1': 1,
-    'day30': 7,
-    'day60': 30,
-    'day90': 1000,
-  });
+  graph.line('population', poplutionRecord);
 })()
