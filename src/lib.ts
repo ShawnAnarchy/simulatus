@@ -45,6 +45,13 @@ export class StateMachine implements ClockInterface {
   facilitators: Array<Facilitator>;//TODO Map<string, Facilitator>
   professionals: Map<string, Array<Professional>>;
   deadPeople: Array<Citizen>;
+  records: Map<string, Map<string, number>>;
+  populationRecords: Map<string, number>;
+  populationIsBusyRecords: Map<string, number>;
+  numFacilitatorRecords: Map<string, number>;
+  numProfessionalDomainRecords: Map<string, number>;
+  numSupremeJudgeRecords: Map<string, number>;
+  numProposalOngoingRecords: Map<string, number>;
 
 
   constructor(){
@@ -65,6 +72,7 @@ export class StateMachine implements ClockInterface {
     this.facilitators = [];
     this.professionals = new Map<string,Array<Professional>>();
     this.deadPeople = [];
+    this.records = new Map<string, Map<string, number>>();
   }
 
   payTax(amount){
@@ -724,13 +732,14 @@ export class Administration implements ClockInterface {
 }
 
 export class Snapshot {
-  static save(tick){
+  static save(tick:number){
     let s = state.get();
-    appendRecord('population', `day${tick}`, s.people.length);
-    appendRecord('population_isBusy', `day${tick}`, s.people.filter(p=>p.isBusy).length);
-    appendRecord('num_facilitator', `day${tick}`, s.facilitators.length);
-    appendRecord(`num_professional_${s.domains[0]}`, `day${tick}`, s.professionals[s.domains[0]].length);
-    appendRecord(`num_supremeJudge`, `day${tick}`, s.supremeJudges.length);
-    appendRecord(`num_proposalOngoing`, `day${tick}`, s.proposals.filter(p=>!p.isFinished).length);
+
+    appendRecord('population', `hd${tick}`, s.people.length);
+    appendRecord('population_isBusy', `hd${tick}`, s.people.filter(p=>p.isBusy).length);
+    appendRecord('num_facilitator', `hd${tick}`, s.facilitators.length);
+    appendRecord(`num_professional_${s.domains[0]}`, `hd${tick}`, s.professionals[s.domains[0]].length);
+    appendRecord(`num_supremeJudge`, `hd${tick}`, s.supremeJudges.length);
+    appendRecord(`num_proposalOngoing`, `hd${tick}`, s.proposals.filter(p=>!p.isFinished).length);
   }
 }

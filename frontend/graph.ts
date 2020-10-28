@@ -12,7 +12,7 @@ export class Graph {
     var myLineChart = new Chart(ctx, {
       type: 'line',
       data: {
-        labels:Object.keys(keyValues),
+        labels:Object.keys(keyValues).map((n,i)=> i%10===0 ? n : "" ),
         datasets: [{
           label: title,
           data: Object.keys(keyValues).map(k=> keyValues[k] ),

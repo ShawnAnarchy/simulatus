@@ -1,7 +1,7 @@
 {
   "global": {
     "tickingTime": 0.5,
-    "simulateForDays": 60
+    "simulateForDays": 365
   },
   "nation": {
     "population": 2500

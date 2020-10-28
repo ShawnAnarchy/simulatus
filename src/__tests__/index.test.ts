@@ -96,8 +96,8 @@ describe('Snapshot', () => {
         state.get().people[0].isBusy = true;
         Snapshot.save(3);
         let record = fetchRecord('population_isBusy');
-        expect(record.day2).toBe(0);
-        expect(record.day3).toBe(1);
+        expect(record.hd2).toBe(0);
+        expect(record.hd3).toBe(1);
       })
       it('should add a record to the file storage for # of facilitator', () => {
         let s = state.get();
@@ -106,8 +106,8 @@ describe('Snapshot', () => {
         s.addFacilitator(new Facilitator(s.people[0]))
         Snapshot.save(4);
         let record = fetchRecord('num_facilitator');
-        expect(record.day3).toBe(0);
-        expect(record.day4).toBe(1);
+        expect(record.hd3).toBe(0);
+        expect(record.hd4).toBe(1);
       })
       it('should add a record to the file storage for # of professionals', () => {
         let s = state.get();
@@ -115,8 +115,8 @@ describe('Snapshot', () => {
         s.addProfessional(s.domains[0], new Professional(s.people[0]))
         Snapshot.save(5);
         let record = fetchRecord(`num_professional_${s.domains[0]}`);
-        expect(record.day4).toBe(0);
-        expect(record.day5).toBe(1);
+        expect(record.hd4).toBe(0);
+        expect(record.hd5).toBe(1);
       })
       it('should add a record to the file storage for # of supreme judges', () => {
         let s = state.get();
@@ -124,8 +124,8 @@ describe('Snapshot', () => {
         s.addSupremeJudge(new SupremeJudge(s.people[0]))
         Snapshot.save(6);
         let record = fetchRecord(`num_supremeJudge`);
-        expect(record.day5).toBe(0);
-        expect(record.day6).toBe(1);
+        expect(record.hd5).toBe(0);
+        expect(record.hd6).toBe(1);
       })
       it('should add a record to the file storage for # of ongoing proposals', () => {
         let s = state.get();
@@ -133,22 +133,22 @@ describe('Snapshot', () => {
         s.submitProposal(s.people[0], ProblemTypes.NORMAL)
         Snapshot.save(7);
         let record = fetchRecord(`num_proposalOngoing`);
-        expect(record.day6).toBe(0);
-        expect(record.day7).toBe(1);
+        expect(record.hd6).toBe(0);
+        expect(record.hd7).toBe(1);
       })
-      it('should add a record to the file storage for the mixing cost', () => {
+      it.skip('should add a record to the file storage for the mixing cost', () => {
       })
-      it('should add a record to the file storage for the participatry subsidy cost', () => {
+      it.skip('should add a record to the file storage for the participatry subsidy cost', (skip) => {
       })
-      it('should add a record to the file storage for the gas subsidy cost', () => {
+      it.skip('should add a record to the file storage for the gas subsidy cost', (skip) => {
       })
-      it('should add a record to the file storage for the facilitator cost', () => {
+      it.skip('should add a record to the file storage for the facilitator cost', (skip) => {
       })
-      it('should add a record to the file storage for the professionals cost', () => {
+      it.skip('should add a record to the file storage for the professionals cost', (skip) => {
       })
-      it('should add a record to the file storage for the supreme judges cost', () => {
+      it.skip('should add a record to the file storage for the supreme judges cost', (skip) => {
       })
-      it('should add a record to the file storage for the phone and connection cost', () => {
+      it.skip('should add a record to the file storage for the phone and connection cost', (skip) => {
       })
     })
   })

@@ -37,7 +37,7 @@
   },
   "type": "module",
   "scripts": {
-    "start": "rollup -c && NODE_ENV=frontend rollup -c && node dist/index.js && node distfront/server.js",
+    "start": "rollup -c && node dist/index.js && NODE_ENV=frontend rollup -c && node distfront/server.js",
     "test": "jest"
   },
   "repository": {

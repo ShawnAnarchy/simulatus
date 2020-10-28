@@ -1,5 +1,7 @@
 import * as fs from 'fs';
 import * as childProcess from 'child_process'
+import { state } from './lib';
+
 export function shuffle(array) {
   var currentIndex = array.length, temporaryValue, randomIndex;
 
@@ -35,20 +37,27 @@ export function trace(...args:any[]):void {
 }
 
 export function appendRecord(dest:string, key:string, value:number):void {
-  let filename = `./frontend/records/${dest}`;
-  let record:any = fetchRecord(dest);
-  let str = "";
-  let obj = {};
-  if(Object.keys(record).length > 0){
-    record[key] = value;
-    str = stringify(record);
-  } else {
-    obj[key] = value;
-    str = stringify(obj);
-  }
-  fs.writeFileSync(filename, str);
-  childProcess.execSync(`cat ${filename} | jq . > ${filename}.json && rm ${filename}`)
+  let s = state.get();
+  if(!s.records[dest]) s.records[dest] = { 'hd0.5': 0 }
+  //TODO this is squashed by the compiler
+  s.records[dest][key] = value;
 }
+export function writeRecords(){
+  let records = state.get().records;
+  let str = "";
+
+  Object.keys(records).map(dest=>{
+    let filename = `./frontend/records/${dest}`;
+    let record = records[dest];
+    str = stringify(record);
+
+    fs.writeFileSync(filename, str);
+    childProcess.execSync(`cat ${filename} | jq . > ${filename}.json && rm ${filename}`)
+    if (!fs.existsSync(`${filename}.json`)) throw new Error(`${filename}.json cannot be made.`);
+  })
+}
+
+
 export function fetchRecord(dest){
   let filename = `./frontend/records/${dest}.json`;
   if(fs.existsSync(filename)){
