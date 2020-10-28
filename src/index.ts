@@ -24,9 +24,10 @@ let writeRecords = Util.writeRecords;
     s.tick();
     Snapshot.save(halfdays);
 
-    if(halfdays%30 === 0) console.log(`day${halfdays/2} with ${s.proposals.length} proposals`) 
+    if((i/2)%30 === 0) console.log(`day${i/2} with ${s.proposals.length} proposals`) 
   }
   console.log(`ticking finished!`)
 
   writeRecords();
+  trace(s.proposals)
 })()

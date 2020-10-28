@@ -4,11 +4,11 @@
     "simulateForDays": 365
   },
   "nation": {
-    "population": 2500
+    "population": 5000
   },
   "deliberation": {
     "representativeHeadcount": 30,
-    "facilitatorsInitialHeadcount": 50,
+    "facilitatorsInitialHeadcount": 15,
     "professionalsInitialHeadcountPerDomain": 20,
     "supremeJudgesInitialHeadcount": 5
   },

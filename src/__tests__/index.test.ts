@@ -106,8 +106,11 @@ describe('Snapshot', () => {
         s.addFacilitator(new Facilitator(s.people[0]))
         Snapshot.save(4);
         let record = fetchRecord('num_facilitator');
+        let record2 = fetchRecord('num_facilitator_isBusy');
         expect(record.hd3).toBe(0);
         expect(record.hd4).toBe(1);
+        expect(record2.hd3).toBe(0);
+        expect(record2.hd4).toBe(1);
       })
       it('should add a record to the file storage for # of professionals', () => {
         let s = state.get();
@@ -124,8 +127,11 @@ describe('Snapshot', () => {
         s.addSupremeJudge(new SupremeJudge(s.people[0]))
         Snapshot.save(6);
         let record = fetchRecord(`num_supremeJudge`);
+        let record2 = fetchRecord(`num_supremeJudge_isBusy`);
         expect(record.hd5).toBe(0);
         expect(record.hd6).toBe(1);
+        expect(record2.hd5).toBe(0);
+        expect(record2.hd6).toBe(1);
       })
       it('should add a record to the file storage for # of ongoing proposals', () => {
         let s = state.get();

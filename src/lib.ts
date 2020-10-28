@@ -161,6 +161,8 @@ export class StateMachine implements ClockInterface {
   approveProposal(proposal){
     this.miscellaneousAdministrations.push(proposal.administrationToBeCreated)
     this.miscellaneousAdministrations = this.miscellaneousAdministrations.filter(x=>x)
+    proposal.isApproved = true;
+    this.updateProposal(proposal);
     //TODO: Reward for participants
     //TODO: There's no tie between admin and vestedMonthlyBudget
   }
@@ -177,9 +179,9 @@ export class StateMachine implements ClockInterface {
   updateProposalWithParticipants(proposal){
     this.updateProposal(proposal);
     this.updateCitizen(proposal.proposer);
-    proposal.representatives.map(r=> this.updateCitizen(r) );
-    proposal.professionals.map(p=> this.updateCitizen(p) );
-    if(proposal.facilitator) this.updateCitizen(proposal.facilitator);
+    proposal.representatives.map(r=> this.updateCRO(r) );
+    proposal.professionals.map(p=> this.updateCRO(p) );
+    if(proposal.facilitator) this.updateCRO(proposal.facilitator);
   }
   updateCitizen(citizen){
     this.people = this.people.map(p=>{
@@ -189,6 +191,33 @@ export class StateMachine implements ClockInterface {
         return p;
       }
     })
+  }
+  updateCRO(cro){
+    let s = state.get();
+    this.facilitators = this.facilitators.map(p=>{
+      if(p.id === cro.id){
+        return cro;
+      } else {
+        return p;
+      }
+    })
+    for(var j=0; j<s.domains.length; j++){
+      this.professionals[s.domains[j]] = this.professionals[s.domains[j]].map(p=>{
+        if(p.id === cro.id){
+          return cro;
+        } else {
+          return p;
+        }
+      })
+    }
+    this.supremeJudges = this.supremeJudges.map(p=>{
+      if(p.id === cro.id){
+        return cro;
+      } else {
+        return p;
+      }
+    })
+    this.updateCitizen(cro);
   }
 }
 export let state = (() => {
@@ -286,6 +315,7 @@ export class Proposal implements ClockInterface {
   administrationToBeCreated: Administration;
   vestedMonthlyBudget: number;
   isFinished: boolean;
+  isApproved: boolean;
 
   constructor(proposer, problemType){
     if(proposer.isBusy) throw new Error('Busy person cannot be a proposer');
@@ -306,7 +336,8 @@ export class Proposal implements ClockInterface {
     this.humanrightsDegree = 30 + Random.number(0, 60)
     this.administrationToBeCreated = new Administration()
     this.vestedMonthlyBudget = this.administrationToBeCreated.monthlyBudget
-    this.isFinished = false
+    this.isFinished = false;
+    this.isApproved= false;
 
     state.get().updateCitizen(proposer);
   }
@@ -344,8 +375,7 @@ export class Proposal implements ClockInterface {
         }
         break;
       case ProposalPhases.FACILITATOR_ASSIGNMENT:
-        let f = state.get().facilitators.filter(f=> !f.isBusy )
-        this.facilitator = f[Random.number(0, f.length-1)]
+        this.pickFacilitator();
         break;
       case ProposalPhases.DOMAIN_ASSIGNMENT:
         this.pickDomains()
@@ -363,15 +393,7 @@ export class Proposal implements ClockInterface {
         }
         break;
       case ProposalPhases.FINAL_JUDGE:
-        let forCount = this.representatives.filter(r=>{
-          let res = false;
-          if( r.humanrightsPreference < 50 && r.progressismPreference > this.progressismDegree ) {
-            res = true
-          } else if ( r.progressismPreference > this.progressismDegree && r.humanrightsPreference > this.humanrightsDegree ) {
-            res = true
-          }
-          return res;
-        }).length;
+        let forCount = this.quorum();
         if(forCount > this.representatives.length/2){
           state.get().approveProposal(this);
           this.finishProposal();
@@ -382,6 +404,7 @@ export class Proposal implements ClockInterface {
       case ProposalPhases.HEADCOUNT_EXCEEDED:
         break;
       case ProposalPhases.FINISHED:
+        if(!this.isFinished) this.finishProposal();
         break;
     }
     this.spentDays += TICKING_TIME
@@ -397,15 +420,15 @@ export class Proposal implements ClockInterface {
       return { code: ProposalPhases.PROFESSIONAL_ASSIGNMENT, report: "" }
     } else if(this.representatives.length === REPRESENTATIVE_HEADCOUNT && !!this.facilitator && this.domains.length > 0 && this.professionals.length > 0 && this.spentDays < this.durationDays && !this.isFinished) {
       return { code: ProposalPhases.DELIBERATION, report: "" }  
-    } else if(this.representatives.length === REPRESENTATIVE_HEADCOUNT && !!this.facilitator && this.domains.length > 0 && this.professionals.length > 0 && this.spentDays === this.durationDays && !this.isFinished) {
+    } else if(this.representatives.length === REPRESENTATIVE_HEADCOUNT && !!this.facilitator && this.domains.length > 0 && this.professionals.length > 0 && this.spentDays >= this.durationDays && !this.isFinished) {
       return { code: ProposalPhases.FINAL_JUDGE, report: "" }
+    } else if(this.spentDays >= this.durationDays || this.isFinished) {
+      return { code: ProposalPhases.FINISHED, report: `` }  
     } else if(this.representatives.length > this.representativeHeadcount) {
       return {
         code: ProposalPhases.HEADCOUNT_EXCEEDED,
         report: `this.representatives.length=${this.representatives.length} and this.representativeHeadcount=${this.representativeHeadcount}`
       }  
-    } else if(this.representatives.length === REPRESENTATIVE_HEADCOUNT &&this.isFinished) {
-      return { code: ProposalPhases.FINISHED, report: `` }  
     } else {
       return {
         code: ProposalPhases.UNKNOWN_ERROR,
@@ -420,13 +443,18 @@ export class Proposal implements ClockInterface {
     return proposer;
   }
   pickFacilitator(){
-    let candidates = state.get().facilitators.filter(f=> !f.isBusy )
-    let randIndex = Random.number(0, candidates.length-1)
-    let selectedFacilitator = candidates[randIndex]
-    selectedFacilitator.isBusy = true
-    state.get().facilitators[randIndex] = selectedFacilitator
-    this.facilitator = selectedFacilitator
-    state.get().updateCitizen(selectedFacilitator);
+    let s = state.get();
+    let candidates = s.facilitators.filter(f=> !f.isBusy )
+    if(candidates.length > 0){
+      let randIndex = Random.number(0, candidates.length-1)
+      let selectedFacilitator = candidates[randIndex]
+      selectedFacilitator.isBusy = true
+      s.facilitators[randIndex] = selectedFacilitator
+      this.facilitator = selectedFacilitator
+      s.updateCRO(selectedFacilitator);
+    } else {
+      this.finishProposal();
+    }
   }
   pickRepresentatives(){
     let shuffledPeople = Util.shuffle(
@@ -461,7 +489,7 @@ export class Proposal implements ClockInterface {
       let selectedProfessional = candidates[randIndex]
       selectedProfessional.isBusy = true;
       state.get().professionals[d][randIndex] = selectedProfessional;
-      state.get().updateCitizen(selectedProfessional);
+      state.get().updateCRO(selectedProfessional);
       return selectedProfessional;
     })
     .filter(x=>x)
@@ -469,6 +497,20 @@ export class Proposal implements ClockInterface {
   modificationRequests(){
     this.progressismDegree += Random.number(0, 7) - Random.number(0, 5)
     this.humanrightsDegree += Random.number(0, 7) - Random.number(0, 5)
+  }
+  quorum(){
+    return this.representatives.filter(r=>{
+      let res = false;
+      // if( r.humanrightsPreference < 50
+      //         && r.progressismPreference > this.progressismDegree ) {
+      //   res = true
+      // } else if ( r.progressismPreference > this.progressismDegree
+      //                 && r.humanrightsPreference > this.humanrightsDegree ) {
+      //   res = true
+      // }
+      res = Random.number(0,1)===0;
+      return res;
+    }).length;
   }
 }
 
@@ -696,7 +738,7 @@ class CorruptionResistantOfficer extends Citizen {
     this.lifetime = candidate.lifetime
     this.age = candidate.age
 
-    s.updateCitizen(this);
+    s.updateCRO(this);
   }
 }
 export class SupremeJudge extends CorruptionResistantOfficer {
@@ -740,6 +782,10 @@ export class Snapshot {
     appendRecord('num_facilitator', `hd${tick}`, s.facilitators.length);
     appendRecord(`num_professional_${s.domains[0]}`, `hd${tick}`, s.professionals[s.domains[0]].length);
     appendRecord(`num_supremeJudge`, `hd${tick}`, s.supremeJudges.length);
+    appendRecord(`num_proposals`, `hd${tick}`, s.proposals.length);
     appendRecord(`num_proposalOngoing`, `hd${tick}`, s.proposals.filter(p=>!p.isFinished).length);
+    appendRecord(`num_proposalApproved`, `hd${tick}`, s.proposals.filter(p=>p.isApproved).length);
+    appendRecord('num_facilitator_isBusy', `hd${tick}`, s.facilitators.filter(p=>p.isBusy).length);
+    appendRecord(`num_supremeJudge_isBusy`, `hd${tick}`, s.supremeJudges.filter(p=>p.isBusy).length);
   }
 }
