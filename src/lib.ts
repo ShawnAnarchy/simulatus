@@ -708,3 +708,11 @@ export class Administration implements ClockInterface {
   }
 
 }
+
+export class Snapshot {
+  GDP: Array<number>;
+
+  constructor(){
+
+  }
+}
