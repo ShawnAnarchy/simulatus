@@ -280,6 +280,9 @@ export class Proposal implements ClockInterface {
   isFinished: boolean;
 
   constructor(proposer, problemType){
+    if(proposer.isBusy) throw new Error('Busy person cannot be a proposer');
+    if(proposer.age < 16) throw new Error('Too young to be a proposer');
+
     this.id = Random.uuid(40);
     this.problemType = problemType;
     this.proposer = this.assignProposer(proposer);
@@ -296,6 +299,8 @@ export class Proposal implements ClockInterface {
     this.administrationToBeCreated = new Administration()
     this.vestedMonthlyBudget = this.administrationToBeCreated.monthlyBudget
     this.isFinished = false
+
+    state.get().updateCitizen(proposer);
   }
   getDurationDays(){
     switch (this.problemType) {
@@ -633,13 +638,13 @@ export class Citizen implements ClockInterface {
       case LifeStage.SUFFRAGE:
       case LifeStage.WORKFORCE:
       case LifeStage.NURSING:
-        if(this.age < 16){
-        } else {
-          if(this.annualSalary/12 > 5000 || this.intelligenceDeviation > 55) {
-            if(Random.number(0, 365/3) === 0){
-              this.submitProposal();
-            }
-          }
+        if(
+          (this.annualSalary/12 > 5000 || this.intelligenceDeviation > 55)
+          && Random.number(0, 365/3) === 0
+          && this.age > 16
+          && !this.isBusy
+        ) {
+          this.submitProposal();
         }
         break;
       case LifeStage.DEATH:
@@ -665,7 +670,8 @@ export class Citizen implements ClockInterface {
 }
 class CorruptionResistantOfficer extends Citizen {
   constructor(candidate: Citizen){
-    if(candidate.isBusy && candidate.age < 16) throw new Error('Busy person must not be a CorruptionResistantOfficer');
+    if (candidate.isBusy) throw new Error('Busy person must not be a CorruptionResistantOfficer');
+    if (candidate.age < 16) throw new Error('Too young to be a CRO.');
     super();
     let s = state.get();
 
@@ -725,5 +731,6 @@ export class Snapshot {
     appendRecord('num_facilitator', `day${tick}`, s.facilitators.length);
     appendRecord(`num_professional_${s.domains[0]}`, `day${tick}`, s.professionals[s.domains[0]].length);
     appendRecord(`num_supremeJudge`, `day${tick}`, s.supremeJudges.length);
+    appendRecord(`num_proposalOngoing`, `day${tick}`, s.proposals.filter(p=>!p.isFinished).length);
   }
 }

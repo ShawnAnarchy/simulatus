@@ -102,6 +102,7 @@ describe('Snapshot', () => {
       it('should add a record to the file storage for # of facilitator', () => {
         let s = state.get();
         s.people[0].isBusy = false;
+        s.people[0].age = 16;
         s.addFacilitator(new Facilitator(s.people[0]))
         Snapshot.save(4);
         let record = fetchRecord('num_facilitator');
@@ -110,6 +111,7 @@ describe('Snapshot', () => {
       })
       it('should add a record to the file storage for # of professionals', () => {
         let s = state.get();
+        s.people[0].isBusy = false;
         s.addProfessional(s.domains[0], new Professional(s.people[0]))
         Snapshot.save(5);
         let record = fetchRecord(`num_professional_${s.domains[0]}`);
@@ -118,6 +120,7 @@ describe('Snapshot', () => {
       })
       it('should add a record to the file storage for # of supreme judges', () => {
         let s = state.get();
+        s.people[0].isBusy = false;
         s.addSupremeJudge(new SupremeJudge(s.people[0]))
         Snapshot.save(6);
         let record = fetchRecord(`num_supremeJudge`);
@@ -125,6 +128,13 @@ describe('Snapshot', () => {
         expect(record.day6).toBe(1);
       })
       it('should add a record to the file storage for # of ongoing proposals', () => {
+        let s = state.get();
+        s.people[0].isBusy = false;
+        s.submitProposal(s.people[0], ProblemTypes.NORMAL)
+        Snapshot.save(7);
+        let record = fetchRecord(`num_proposalOngoing`);
+        expect(record.day6).toBe(0);
+        expect(record.day7).toBe(1);
       })
       it('should add a record to the file storage for the mixing cost', () => {
       })
@@ -162,11 +172,13 @@ describe('Proposal', () => {
         );
         expect(proposal.representatives.filter(r=> r.isBusy ).length).toBe(0);
       });
-      it('should be failed due to busy citizens.', () => {
+      it('should be failed because busy citizens cannot be reps.', () => {
         let s = state.init();
         for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
         s.people = s.people.map(p=>{ p.isBusy = true; return p; });
         let citizen = s.people[0];
+        citizen.isBusy = false;
+        citizen.age = 16;
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.UNKNOWN_ERROR);
@@ -183,6 +195,8 @@ describe('Proposal', () => {
         for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
         s.people = s.people.map(p=>{ p.age = 15; return p; });
         let citizen = s.people[0];
+        citizen.isBusy = false;
+        citizen.age = 16;
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.UNKNOWN_ERROR);
@@ -223,6 +237,8 @@ describe('Proposal', () => {
     context('ProposalPhases.DOMAIN_ASSIGNMENT', () => {
       it('should be true.', () => {
         let s = state.get();
+        s.people[0].isBusy = false;
+        s.people[0].age = 16;
         s.proposals[0].facilitator = new Facilitator(s.people[0]);
         let proposal = s.proposals[0];
         let validationResult = proposal.validate();
@@ -247,7 +263,9 @@ describe('Proposal', () => {
     context('ProposalPhases.DELIBERATION', () => {
       it('should be true.', () => {
         let s = state.get();
-        s.professionals[TEST_DOMAIN] = [s.people[0]];
+        s.people[0].isBusy = false;
+        s.people[0].age = 16;
+        s.professionals[TEST_DOMAIN] = [new Professional(s.people[0])];
         s.proposals[0].professionals = [s.professionals[TEST_DOMAIN][0]];
         let proposal = s.proposals[0];
         let validationResult = proposal.validate();
