@@ -12,18 +12,22 @@ import {
 const TEST_DOMAIN = 'test_domain';
 const ENOUGH_POPULATION = 200;
 
+import * as fs from 'fs';
 import * as Random from '../random';
 import * as Util from '../util';
 import {
   state,
+  Snapshot,
   Facilitator,
   Professional,
   SupremeJudge,
   Proposal,
   ProblemTypes,
-  ProposalPhases } from '../lib';
+  ProposalPhases
+} from '../lib';
   
-
+const fetchRecord = Util.fetchRecord;
+const deleteRecord = Util.deleteRecord;
 const context = describe;
 
 
@@ -58,6 +62,50 @@ describe('StateMachine', () => {
         s.tick();
       }
       expect(s.people.length+s.deadPeople.length).toBe(POPULATION)
+    })
+  })
+});
+describe('Snapshot', () => {
+  describe('save', () => {
+    context('StateMachine', () => {
+      beforeAll(()=>{
+        state.init();
+        deleteRecord('population');
+      });
+      it('should add a record to the file storage for population', () => {
+        let s = state.get();
+        expect(s.people.length).toBe(0);
+        s.addCitizen();
+        expect(s.people.length).toBe(1);
+        let len1 = Object.keys(fetchRecord('population')).length;
+        Snapshot.save(1);
+        let len2 = Object.keys(fetchRecord('population')).length;
+        expect(len2).toBe(len1+1);
+      })
+      it('should add a record to the file storage for isBusy rate', () => {
+      })
+      it('should add a record to the file storage for # of facilitator', () => {
+      })
+      it('should add a record to the file storage for # of professionals', () => {
+      })
+      it('should add a record to the file storage for # of supreme judges', () => {
+      })
+      it('should add a record to the file storage for # of ongoing proposals', () => {
+      })
+      it('should add a record to the file storage for the mixing cost', () => {
+      })
+      it('should add a record to the file storage for the participatry subsidy cost', () => {
+      })
+      it('should add a record to the file storage for the gas subsidy cost', () => {
+      })
+      it('should add a record to the file storage for the facilitator cost', () => {
+      })
+      it('should add a record to the file storage for the professionals cost', () => {
+      })
+      it('should add a record to the file storage for the supreme judges cost', () => {
+      })
+      it('should add a record to the file storage for the phone and connection cost', () => {
+      })
     })
   })
 })

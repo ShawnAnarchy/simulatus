@@ -11,6 +11,7 @@ import {
   LOWERBOUND,
   REPRESENTATIVE_HEADCOUNT } from './const'
 let squash = Util.squash;
+let appendRecord = Util.appendRecord;
 
 
 
@@ -710,9 +711,7 @@ export class Administration implements ClockInterface {
 }
 
 export class Snapshot {
-  GDP: Array<number>;
-
-  constructor(){
-
+  static save(tick){
+    appendRecord('population', `day${tick}`, state.get().people.length);
   }
 }
