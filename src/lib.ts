@@ -220,16 +220,19 @@ export let state = (() => {
       s.addDomain('physics')
       s.addDomain('biology')
       for(var i=0; i<FACILITATORS_INITIAL_HEADCCOUNT; i++){
-        let candidate = s.people[Random.number(0, s.people.length-1)]
+        let ppl = s.people.filter(p=> (!p.isBusy && p.age > 16 && p.intelligenceDeviation > 49 ));
+        let candidate = ppl[Random.number(0, ppl.length-1)]
         s.addFacilitator(new Facilitator(candidate))
       }
       for(var i=0; i<SUPREME_JUDGES_INITIAL_HEADCCOUNT; i++){
-        let candidate = s.people[Random.number(0, s.people.length-1)]
+        let ppl = s.people.filter(p=> (!p.isBusy && p.age > 16 && p.intelligenceDeviation > 60 ));
+        let candidate = ppl[Random.number(0, ppl.length-1)]
         s.addSupremeJudge(new SupremeJudge(candidate))
       }
       for(var i=0; i<PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN; i++){
         for(var j=0; j<s.domains.length; j++){
-          let candidate = s.people[Random.number(0, s.people.length-1)]
+          let ppl = s.people.filter(p=> (!p.isBusy && p.age > 16 && p.intelligenceDeviation > 60 ));
+          let candidate = ppl[Random.number(0, ppl.length-1)]
           s.addProfessional(s.domains[j], new Professional(candidate))
         }
       }
@@ -662,10 +665,11 @@ export class Citizen implements ClockInterface {
 }
 class CorruptionResistantOfficer extends Citizen {
   constructor(candidate: Citizen){
-    if(candidate.isBusy) throw new Error('Busy person must not be a CorruptionResistantOfficer');
-    let s = state.get();
+    if(candidate.isBusy && candidate.age < 16) throw new Error('Busy person must not be a CorruptionResistantOfficer');
     super();
-    this.isBusy = candidate.isBusy;
+    let s = state.get();
+
+    this.isBusy = true;
     this.id = candidate.id
     this.annualSalary = candidate.annualSalary
     this.intelligenceDeviation = candidate.intelligenceDeviation
@@ -677,6 +681,8 @@ class CorruptionResistantOfficer extends Citizen {
     this.biologicallyCanBePregnant = candidate.biologicallyCanBePregnant
     this.lifetime = candidate.lifetime
     this.age = candidate.age
+
+    s.updateCitizen(this);
   }
 }
 export class SupremeJudge extends CorruptionResistantOfficer {
@@ -713,8 +719,11 @@ export class Administration implements ClockInterface {
 
 export class Snapshot {
   static save(tick){
-    appendRecord('population', `day${tick}`, state.get().people.length);
-    appendRecord('population_isBusy', `day${tick}`, state.get().people.filter(p=>p.isBusy).length);
-    appendRecord('num_facilitator', `day${tick}`, state.get().facilitators.length);
+    let s = state.get();
+    appendRecord('population', `day${tick}`, s.people.length);
+    appendRecord('population_isBusy', `day${tick}`, s.people.filter(p=>p.isBusy).length);
+    appendRecord('num_facilitator', `day${tick}`, s.facilitators.length);
+    appendRecord(`num_professional_${s.domains[0]}`, `day${tick}`, s.professionals[s.domains[0]].length);
+    appendRecord(`num_supremeJudge`, `day${tick}`, s.supremeJudges.length);
   }
 }

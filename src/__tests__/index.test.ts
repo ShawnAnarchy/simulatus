@@ -69,7 +69,12 @@ describe('Snapshot', () => {
   describe('save', () => {
     context('StateMachine', () => {
       beforeAll(()=>{
-        state.init();
+        let s = state.init();
+        s.addDomain('finance')
+        s.addDomain('military')
+        s.addDomain('publicSafety')
+        s.addDomain('physics')
+        s.addDomain('biology')
         deleteRecord('population');
       });
       it('should add a record to the file storage for population', () => {
@@ -91,7 +96,6 @@ describe('Snapshot', () => {
         state.get().people[0].isBusy = true;
         Snapshot.save(3);
         let record = fetchRecord('population_isBusy');
-        expect(record.day1).toBe(0);
         expect(record.day2).toBe(0);
         expect(record.day3).toBe(1);
       })
@@ -101,14 +105,24 @@ describe('Snapshot', () => {
         s.addFacilitator(new Facilitator(s.people[0]))
         Snapshot.save(4);
         let record = fetchRecord('num_facilitator');
-        expect(record.day1).toBe(0);
-        expect(record.day2).toBe(0);
         expect(record.day3).toBe(0);
         expect(record.day4).toBe(1);
       })
       it('should add a record to the file storage for # of professionals', () => {
+        let s = state.get();
+        s.addProfessional(s.domains[0], new Professional(s.people[0]))
+        Snapshot.save(5);
+        let record = fetchRecord(`num_professional_${s.domains[0]}`);
+        expect(record.day4).toBe(0);
+        expect(record.day5).toBe(1);
       })
       it('should add a record to the file storage for # of supreme judges', () => {
+        let s = state.get();
+        s.addSupremeJudge(new SupremeJudge(s.people[0]))
+        Snapshot.save(6);
+        let record = fetchRecord(`num_supremeJudge`);
+        expect(record.day5).toBe(0);
+        expect(record.day6).toBe(1);
       })
       it('should add a record to the file storage for # of ongoing proposals', () => {
       })
