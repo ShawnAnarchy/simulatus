@@ -713,5 +713,6 @@ export class Administration implements ClockInterface {
 export class Snapshot {
   static save(tick){
     appendRecord('population', `day${tick}`, state.get().people.length);
+    appendRecord('population_isBusy', `day${tick}`, state.get().people.filter(p=>p.isBusy).length);
   }
 }

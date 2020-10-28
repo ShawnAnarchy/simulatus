@@ -81,8 +81,19 @@ describe('Snapshot', () => {
         Snapshot.save(1);
         let len2 = Object.keys(fetchRecord('population')).length;
         expect(len2).toBe(len1+1);
+        s.addCitizen();
+        expect(s.people.length).toBe(2);
+        Snapshot.save(2);
+        let len3 = Object.keys(fetchRecord('population')).length;
+        expect(len3).toBe(len2+1);
       })
       it('should add a record to the file storage for isBusy rate', () => {
+        state.get().people[0].isBusy = true;
+        Snapshot.save(3);
+        let record = fetchRecord('population_isBusy');
+        expect(record.day1).toBe(0);
+        expect(record.day2).toBe(0);
+        expect(record.day3).toBe(1);
       })
       it('should add a record to the file storage for # of facilitator', () => {
       })
