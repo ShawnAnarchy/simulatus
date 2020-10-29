@@ -101,16 +101,24 @@ export class StateMachine implements ClockInterface {
     }).filter(x=>x);
   }
   addSupremeJudge(judge){
-    if(judge.status === PersonalStatus.DELIBERATING) throw new Error('SupremeJudge candidate has to be not busy.');
+    if (judge.status === PersonalStatus.INACTIVE) throw new Error('SupremeJudge must join the mixing.');
+    if (judge.status === PersonalStatus.POOLED) throw new Error('Corruption Resistant Officers cannot be a SupremeJudge.');
+    if (judge.status === PersonalStatus.DELIBERATING) throw new Error('You cannot be a SupremeJudge while you are in a deliberation.');
+    if (judge.age < 16) throw new Error('Too young to be a CRO.');
     this.updateCRO(judge);//citizen=busy,cro=busy
   }
   addFacilitator(facilitator){
-    if (facilitator.status === PersonalStatus.DELIBERATING) throw new Error('Busy person must not be a CorruptionResistantOfficer.');
+    if (facilitator.status === PersonalStatus.INACTIVE) throw new Error('Facilitator must join the mixing.');
+    if (facilitator.status === PersonalStatus.POOLED) throw new Error('Corruption Resistant Officers cannot be a facilitator.');
+    if (facilitator.status === PersonalStatus.DELIBERATING) throw new Error('You cannot be a facilitator while you are in a deliberation.');
     if (facilitator.age < 16) throw new Error('Too young to be a CRO.');
     this.updateCRO(facilitator);//citizen=busy,cro=busy
   }
   addProfessional(domain, professional){
-    if(professional.status === PersonalStatus.DELIBERATING) throw new Error('Professional candidate has to be not busy.');
+    if (professional.status === PersonalStatus.INACTIVE) throw new Error('Professional must join the mixing.');
+    if (professional.status === PersonalStatus.POOLED) throw new Error('Corruption Resistant Officers cannot be a professional.');
+    if (professional.status === PersonalStatus.DELIBERATING) throw new Error('You cannot be a professional while you are in a deliberation.');
+    if (professional.age < 16) throw new Error('Too young to be a CRO.');
     this.updateCRO(professional);//citizen=busy,cro=busy
   }
 
@@ -273,7 +281,8 @@ export let state = (() => {
     setup: (population:number)=>{
       let s = _get();
       for(var i=0; i<population; i++){
-        s.addCitizen()
+        let citizen = s.addCitizen()
+        if(i%10 !== 0) citizen.masquerade();//10% non mixing
       }
 
       DEFAULT_DOMAINS.map(d=>s.addDomain(d))
@@ -340,7 +349,9 @@ export class Proposal implements ClockInterface {
   isApproved: boolean;
 
   constructor(proposer, problemType){
-    if(proposer.status !== PersonalStatus.CANDIDATE) throw new Error('Busy person cannot be a proposer');
+    if(proposer.status === PersonalStatus.INACTIVE) throw new Error('Proposer must join the mixing.');
+    if(proposer.status === PersonalStatus.POOLED) throw new Error('Corruption Resistant Officers cannot be a proposer.');
+    if(proposer.status === PersonalStatus.DELIBERATING) throw new Error('You cannot propose while you are in a deliberation.');
     if(proposer.age < 16) throw new Error('Too young to be a proposer');
 
     this.id = Random.uuid(40);
@@ -592,9 +603,18 @@ export class Citizen implements ClockInterface {
   }
   masquerade(){
     this.status = PersonalStatus.CANDIDATE;
+    return this;
   }
   tick(){
     let context = this.validate();
+
+    if(context.code === LifeStage.DEATH){
+      state.get().removeCitizen(this)
+    }
+
+    if(this.status === PersonalStatus.INACTIVE && Random.number(0,3)%3 !== 0){
+      this.masquerade();      
+    }
 
     this.earn(context)
     this.payTax(context)
@@ -602,10 +622,6 @@ export class Citizen implements ClockInterface {
     this.activePoliticalAction(context)
     this.passivePoliticalAction(context)
     
-    if(context.code === LifeStage.DEATH){
-      state.get().removeCitizen(this)
-    }
-
     this.age += TICKING_TIME/365
     this.validateAfter();
   }
@@ -761,7 +777,7 @@ class CorruptionResistantOfficer extends Citizen {
     super();
     let s = state.get();
 
-    this.status = PersonalStatus.POOLED;
+    this.status = candidate.status;
     this.id = candidate.id
     this.annualSalary = candidate.annualSalary
     this.intelligenceDeviation = candidate.intelligenceDeviation

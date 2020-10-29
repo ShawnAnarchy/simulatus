@@ -36,9 +36,10 @@ describe('StateMachine', () => {
   describe('submitProposal', () => {
     it('should create new proposal.', () => {
       let s = state.init();
-      for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
+      for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
       s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
       let proposer = s.people[0];
+      proposer.masquerade();
       s.submitProposal(proposer, ProblemTypes.NORMAL);
       expect(s.proposals[0].representatives.length).toBe(REPRESENTATIVE_HEADCOUNT);
       expect(s.proposals[0].representatives).toEqual(
@@ -49,13 +50,13 @@ describe('StateMachine', () => {
   describe('people', () => {
     it('should not have conflict.', () => {
       let s = state.init();
-      for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
+      for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
       expect(s.people.length).toBe(ENOUGH_POPULATION)
       expect(Util.uniq(s.people.map(p=>p.id)).length).toBe(ENOUGH_POPULATION)
     })
   })
   describe('multi-round tests', () => {
-    it('should not assign a citizen for multiple proposals at once.', () => {
+    it('should have consistent pupulation after tickings.', () => {
       let s = state.init();
       state.setup(POPULATION);
       expect(s.people.length+s.deadPeople.length).toBe(POPULATION)
@@ -68,7 +69,7 @@ describe('StateMachine', () => {
   describe('addFacilitator', () => {
     it('should be free as facilitator but cannot be a candidate of other roles.', () => {
       let s = state.get();
-      let citizen = s.people[0] ? s.people[0] : s.addCitizen();
+      let citizen = s.people[0] ? s.people[0] : s.addCitizen().masquerade();
 
       let facilitator = new Facilitator(citizen);
       facilitator.masquerade();
@@ -81,7 +82,7 @@ describe('StateMachine', () => {
       let s = state.get();
       let citizen = s.people[0];
       let facilitator = new Facilitator(citizen);
-      facilitator.masquerade();
+      facilitator.status = PersonalStatus.CANDIDATE;
       facilitator.age = 15;
       expect(()=>{
         s.addFacilitator(facilitator)
@@ -95,7 +96,7 @@ describe('StateMachine', () => {
       facilitator.age = 16;
       expect(()=>{
         s.addFacilitator(facilitator)
-      }).toThrow('Busy person must not be a CorruptionResistantOfficer.')
+      }).toThrow('You cannot be a facilitator while you are in a deliberation.')
     })
   })
 });
@@ -110,12 +111,12 @@ describe('Snapshot', () => {
       it('should add a record to the memory storage for population', () => {
         let s = state.get();
         expect(s.people.length).toBe(0);
-        s.addCitizen();
+        s.addCitizen().masquerade();
         expect(s.people.length).toBe(1);
         expect(s.records['population']).toBe(undefined);
         Snapshot.save(1);
         expect(Object.keys(s.records['population']).length).toBe(1);
-        s.addCitizen();
+        s.addCitizen().masquerade();
         expect(s.people.length).toBe(2);
         Snapshot.save(2);
         expect(Object.keys(s.records['population']).length).toBe(2);
@@ -223,7 +224,7 @@ describe('Proposal', () => {
     context('ProposalPhases.INITIAL_JUDGE', () => {
       it('should be failed due to the lack of reps.', () => {
         let s = state.init();
-        let citizen = s.addCitizen();
+        let citizen = s.addCitizen().masquerade();
         citizen.age = 16;
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
         let validationResult = proposal.validate();
@@ -238,7 +239,7 @@ describe('Proposal', () => {
       });
       it('should be failed because busy citizens cannot be reps.', () => {
         let s = state.init();
-        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
+        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
         s.people = s.people.map(p=>{
           p.status = PersonalStatus.DELIBERATING;
           return p;
@@ -259,7 +260,7 @@ describe('Proposal', () => {
       });
       it('should be failed due to too young reps.', () => {
         let s = state.init();
-        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
+        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
         s.people = s.people.map(p=>{ p.age = 15; return p; });
         let citizen = s.people[0];
         citizen.status = PersonalStatus.CANDIDATE;
@@ -274,7 +275,7 @@ describe('Proposal', () => {
       });
       it('should be successfully initialized.', () => {
         let s = state.init();
-        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
+        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
         s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
         let citizen = s.people[0];
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
@@ -386,7 +387,7 @@ describe('Proposal', () => {
     context('init and tick', () => {
       it('should be the finished phase with IQ <= 50 proposer.', () => {
         let s = state.init();
-        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
+        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
         s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
         let proposer = s.people[0];
         proposer.intelligenceDeviation = 50;
@@ -396,13 +397,17 @@ describe('Proposal', () => {
         s.tick();
         expect(proposal.validate().code).toBe(ProposalPhases.FINISHED);
         expect(proposal.isFinished).toBe(true);
-        expect(proposal.proposer.status).toBe(PersonalStatus.CANDIDATE);
-        expect(s.people[0].status).toBe(PersonalStatus.CANDIDATE);
+        expect(proposal.proposer.status).toBe(PersonalStatus.INACTIVE);
+        expect(s.people[0].status).toBe(PersonalStatus.INACTIVE);
       });
       it('should be the facilitator assignment phase with IQ > 50 proposer.', () => {
         let s = state.init();
-        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen();
-        s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
+        for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
+        s.people = s.people.map(p=>{
+          p.age += 16;
+          p.masquerade();
+          return p;
+        });//avoid random failure
         let proposer = s.people[0];
         proposer.intelligenceDeviation = 50.1;
         s.submitProposal(proposer, ProblemTypes.NORMAL);
