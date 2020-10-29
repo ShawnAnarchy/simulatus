@@ -6,3 +6,4 @@ util.js
 logs
 *.map
 dist
+frontend/records
