@@ -7,7 +7,8 @@ import {
   SUPREME_JUDGES_INITIAL_HEADCCOUNT,
   UPPERBOUND,
   LOWERBOUND,
-  REPRESENTATIVE_HEADCOUNT } from '../const';
+  REPRESENTATIVE_HEADCOUNT,
+  DEFAULT_DOMAINS } from '../const';
 
 const TEST_DOMAIN = 'test_domain';
 const ENOUGH_POPULATION = 200;
@@ -27,7 +28,6 @@ import {
 } from '../lib';
   
 const fetchRecord = Util.fetchRecord;
-const deleteRecord = Util.deleteRecord;
 const context = describe;
 
 
@@ -70,92 +70,112 @@ describe('Snapshot', () => {
     context('StateMachine', () => {
       beforeAll(()=>{
         let s = state.init();
-        s.addDomain('finance')
-        s.addDomain('military')
-        s.addDomain('publicSafety')
-        s.addDomain('physics')
-        s.addDomain('biology')
-        deleteRecord('population');
+        DEFAULT_DOMAINS.map(d=> s.addDomain(d) );
+        Util.deleteRecordAll();
       });
-      it('should add a record to the file storage for population', () => {
+      it('should add a record s.to the memory storage for population', () => {
         let s = state.get();
         expect(s.people.length).toBe(0);
         s.addCitizen();
         expect(s.people.length).toBe(1);
-        let len1 = Object.keys(fetchRecord('population')).length;
+        expect(s.records['population']).toBe(undefined);
         Snapshot.save(1);
-        let len2 = Object.keys(fetchRecord('population')).length;
-        expect(len2).toBe(len1+1);
+        expect(Object.keys(s.records['population']).length).toBe(1);
         s.addCitizen();
         expect(s.people.length).toBe(2);
         Snapshot.save(2);
-        let len3 = Object.keys(fetchRecord('population')).length;
-        expect(len3).toBe(len2+1);
+        expect(Object.keys(s.records['population']).length).toBe(2);
       })
-      it('should add a record to the file storage for isBusy rate', () => {
-        state.get().people[0].isBusy = true;
+      it('should add a record s.to the memory storage for isBusy rate', () => {
+        let s = state.get();
+        s.people[0].isBusy = true;
         Snapshot.save(3);
-        let record = fetchRecord('population_isBusy');
+        let record = s.records['population_isBusy'];
         expect(record.hd2).toBe(0);
         expect(record.hd3).toBe(1);
       })
-      it('should add a record to the file storage for # of facilitator', () => {
+      it('should add a record s.to the memory storage for # of facilitator', () => {
         let s = state.get();
         s.people[0].isBusy = false;
         s.people[0].age = 16;
         s.addFacilitator(new Facilitator(s.people[0]))
         Snapshot.save(4);
-        let record = fetchRecord('num_facilitator');
-        let record2 = fetchRecord('num_facilitator_isBusy');
+        let record = s.records['num_facilitator'];
+        let record2 = s.records['num_facilitator_isBusy']
         expect(record.hd3).toBe(0);
         expect(record.hd4).toBe(1);
         expect(record2.hd3).toBe(0);
         expect(record2.hd4).toBe(1);
       })
-      it('should add a record to the file storage for # of professionals', () => {
+      it('should add a record s.to the memory storage for # of professionals', () => {
         let s = state.get();
         s.people[0].isBusy = false;
         s.addProfessional(s.domains[0], new Professional(s.people[0]))
         Snapshot.save(5);
-        let record = fetchRecord(`num_professional_${s.domains[0]}`);
+        let record = s.records[`num_professional_${s.domains[0]}`]
         expect(record.hd4).toBe(0);
         expect(record.hd5).toBe(1);
       })
-      it('should add a record to the file storage for # of supreme judges', () => {
+      it('should add a record s.to the memory storage for # of supreme judges', () => {
         let s = state.get();
         s.people[0].isBusy = false;
         s.addSupremeJudge(new SupremeJudge(s.people[0]))
         Snapshot.save(6);
-        let record = fetchRecord(`num_supremeJudge`);
-        let record2 = fetchRecord(`num_supremeJudge_isBusy`);
+        let record = s.records['num_supremeJudge']
+        let record2 = s.records['num_supremeJudge_isBusy']
         expect(record.hd5).toBe(0);
         expect(record.hd6).toBe(1);
         expect(record2.hd5).toBe(0);
         expect(record2.hd6).toBe(1);
       })
-      it('should add a record to the file storage for # of ongoing proposals', () => {
+      it('should add a record s.to the memory storage for # of ongoing proposals', () => {
         let s = state.get();
         s.people[0].isBusy = false;
         s.submitProposal(s.people[0], ProblemTypes.NORMAL)
         Snapshot.save(7);
-        let record = fetchRecord(`num_proposalOngoing`);
+        let record = s.records['num_proposalOngoing']
         expect(record.hd6).toBe(0);
         expect(record.hd7).toBe(1);
       })
-      it.skip('should add a record to the file storage for the mixing cost', () => {
+      it.skip('should add a record s.to the memory storage for the mixing cost', () => {
       })
-      it.skip('should add a record to the file storage for the participatry subsidy cost', (skip) => {
+      it.skip('should add a record s.to the memory storage for the participatry subsidy cost', (skip) => {
       })
-      it.skip('should add a record to the file storage for the gas subsidy cost', (skip) => {
+      it.skip('should add a record s.to the memory storage for the gas subsidy cost', (skip) => {
       })
-      it.skip('should add a record to the file storage for the facilitator cost', (skip) => {
+      it.skip('should add a record s.to the memory storage for the facilitator cost', (skip) => {
       })
-      it.skip('should add a record to the file storage for the professionals cost', (skip) => {
+      it.skip('should add a record s.to the memory storage for the professionals cost', (skip) => {
       })
-      it.skip('should add a record to the file storage for the supreme judges cost', (skip) => {
+      it.skip('should add a record s.to the memory storage for the supreme judges cost', (skip) => {
       })
-      it.skip('should add a record to the file storage for the phone and connection cost', (skip) => {
+      it.skip('should add a record s.to the memory storage for the phone and connection cost', (skip) => {
       })
+    })
+  })
+  describe('scenario test', () => {
+    beforeAll(()=>{
+      let s = state.init();
+      // let s = state.init();
+      state.setup(POPULATION);
+    
+      for(var i=0; i<15*2; i++){
+        let halfdays = (i+1)/2;
+        s.tick();
+        Snapshot.save(halfdays);
+      }
+    })
+    it('should have the same # of ongoing proposals and busy facilitators.', () => {
+      let s = state.get();
+
+      let BUSY_FACILITATOR_COUNT = Object.keys(s.records['num_facilitator_isBusy']).length
+      let ONGOING_PROPOSALS_COUNT = Object.keys(s.records['num_proposalOngoing']).length
+      expect(ONGOING_PROPOSALS_COUNT).toBe(BUSY_FACILITATOR_COUNT);
+    })
+    it('should have approved proposal.', () => {
+      let s = state.get();
+      let APPROVED_PROPOSALS_COUNT = Object.keys(s.records['num_proposalApproved']).length
+      expect(APPROVED_PROPOSALS_COUNT).toBeGreaterThan(0);
     })
   })
 })
@@ -167,6 +187,7 @@ describe('Proposal', () => {
       it('should be failed due to the lack of reps.', () => {
         let s = state.init();
         let citizen = s.addCitizen();
+        citizen.age = 16;
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.UNKNOWN_ERROR);

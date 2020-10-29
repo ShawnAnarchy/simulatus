@@ -36,12 +36,6 @@ export function trace(...args:any[]):void {
   childProcess.execSync(`cat logs/${now} | jq . > logs/${now}.json && rm logs/${now}`)
 }
 
-export function appendRecord(dest:string, key:string, value:number):void {
-  let s = state.get();
-  if(!s.records[dest]) s.records[dest] = { 'hd0.5': 0 }
-  //TODO this is squashed by the compiler
-  s.records[dest][key] = value;
-}
 export function writeRecords(){
   let records = state.get().records;
   let str = "";
@@ -67,10 +61,15 @@ export function fetchRecord(dest){
     return {}
   }
 }
+export function deleteRecordAll(){
+  let dirname = `./frontend/records`;
+  fs.rmdirSync(dirname, {recursive: true});
+  fs.mkdirSync(dirname);
+}
 export function deleteRecord(dest){
   let filename = `./frontend/records/${dest}.json`;
   if(fs.existsSync(filename)){
-    fs.writeFileSync(filename, "");
+    fs.writeFileSync(filename, '');
   } else {
   }
 }

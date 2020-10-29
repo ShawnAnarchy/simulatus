@@ -29,5 +29,4 @@ let writeRecords = Util.writeRecords;
   console.log(`ticking finished!`)
 
   writeRecords();
-  trace(s.proposals)
 })()

@@ -4,12 +4,13 @@
     "simulateForDays": 365
   },
   "nation": {
-    "population": 5000
+    "population": 5000,
+    "domains": ["finance", "military", "publicSafety", "physics"]
   },
   "deliberation": {
     "representativeHeadcount": 30,
-    "facilitatorsInitialHeadcount": 15,
-    "professionalsInitialHeadcountPerDomain": 20,
+    "facilitatorsInitialHeadcount": 500,
+    "professionalsInitialHeadcountPerDomain": 300,
     "supremeJudgesInitialHeadcount": 5
   },
   "citizen": {

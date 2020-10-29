@@ -9,9 +9,9 @@ import {
   SUPREME_JUDGES_INITIAL_HEADCCOUNT,
   UPPERBOUND,
   LOWERBOUND,
-  REPRESENTATIVE_HEADCOUNT } from './const'
+  REPRESENTATIVE_HEADCOUNT,
+  DEFAULT_DOMAINS } from './const'
 let squash = Util.squash;
-let appendRecord = Util.appendRecord;
 
 
 
@@ -219,6 +219,12 @@ export class StateMachine implements ClockInterface {
     })
     this.updateCitizen(cro);
   }
+  appendRecord(dest:string, key:string, value:number):void {
+    if(!this.records[dest]) this.records[dest] = {}
+    this.records[dest][key] = value;
+  }
+  
+
 }
 export let state = (() => {
   var instance: StateMachine;
@@ -251,11 +257,9 @@ export let state = (() => {
       for(var i=0; i<population; i++){
         s.addCitizen()
       }
-      s.addDomain('finance')
-      s.addDomain('military')
-      s.addDomain('publicSafety')
-      s.addDomain('physics')
-      s.addDomain('biology')
+
+      DEFAULT_DOMAINS.map(d=>s.addDomain(d))
+
       for(var i=0; i<FACILITATORS_INITIAL_HEADCCOUNT; i++){
         let ppl = s.people.filter(p=> (!p.isBusy && p.age > 16 && p.intelligenceDeviation > 49 ));
         let candidate = ppl[Random.number(0, ppl.length-1)]
@@ -508,7 +512,7 @@ export class Proposal implements ClockInterface {
       //                 && r.humanrightsPreference > this.humanrightsDegree ) {
       //   res = true
       // }
-      res = Random.number(0,1)===0;
+      res = true;//Random.number(0,1)===0;
       return res;
     }).length;
   }
@@ -777,15 +781,15 @@ export class Snapshot {
   static save(tick:number){
     let s = state.get();
 
-    appendRecord('population', `hd${tick}`, s.people.length);
-    appendRecord('population_isBusy', `hd${tick}`, s.people.filter(p=>p.isBusy).length);
-    appendRecord('num_facilitator', `hd${tick}`, s.facilitators.length);
-    appendRecord(`num_professional_${s.domains[0]}`, `hd${tick}`, s.professionals[s.domains[0]].length);
-    appendRecord(`num_supremeJudge`, `hd${tick}`, s.supremeJudges.length);
-    appendRecord(`num_proposals`, `hd${tick}`, s.proposals.length);
-    appendRecord(`num_proposalOngoing`, `hd${tick}`, s.proposals.filter(p=>!p.isFinished).length);
-    appendRecord(`num_proposalApproved`, `hd${tick}`, s.proposals.filter(p=>p.isApproved).length);
-    appendRecord('num_facilitator_isBusy', `hd${tick}`, s.facilitators.filter(p=>p.isBusy).length);
-    appendRecord(`num_supremeJudge_isBusy`, `hd${tick}`, s.supremeJudges.filter(p=>p.isBusy).length);
+    s.appendRecord('population', `hd${tick}`, s.people.length);
+    s.appendRecord('population_isBusy', `hd${tick}`, s.people.filter(p=>p.isBusy).length);
+    s.appendRecord('num_facilitator', `hd${tick}`, s.facilitators.length);
+    s.appendRecord(`num_professional_${s.domains[0]}`, `hd${tick}`, s.professionals[s.domains[0]].length);
+    s.appendRecord(`num_supremeJudge`, `hd${tick}`, s.supremeJudges.length);
+    s.appendRecord(`num_proposals`, `hd${tick}`, s.proposals.length);
+    s.appendRecord(`num_proposalOngoing`, `hd${tick}`, s.proposals.filter(p=>!p.isFinished).length);
+    s.appendRecord(`num_proposalApproved`, `hd${tick}`, s.proposals.filter(p=>p.isApproved).length);
+    s.appendRecord('num_facilitator_isBusy', `hd${tick}`, s.facilitators.filter(p=>p.isBusy).length);
+    s.appendRecord(`num_supremeJudge_isBusy`, `hd${tick}`, s.supremeJudges.filter(p=>p.isBusy).length);
   }
 }
