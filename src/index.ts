@@ -18,7 +18,9 @@ let writeRecords = Util.writeRecords;
   let s = state.get();
   state.setup(POPULATION);
 
-  console.log(`ticking started...`)
+  trace(s);
+
+  console.log(`ticking started...`) 
   for(var i=0; i<SIMULATE_FOR_DAYS*2; i++){
     let halfdays = (i+1)/2;
     s.tick();
@@ -29,4 +31,5 @@ let writeRecords = Util.writeRecords;
   console.log(`ticking finished!`)
 
   writeRecords();
+  trace(s);
 })()

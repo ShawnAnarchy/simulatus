@@ -101,13 +101,17 @@ export class StateMachine implements ClockInterface {
     }).filter(x=>x);
   }
   addSupremeJudge(judge){
-    this.supremeJudges.push(judge)
+    if(judge.status === PersonalStatus.DELIBERATING) throw new Error('SupremeJudge candidate has to be not busy.');
+    this.updateCRO(judge);//citizen=busy,cro=busy
   }
-  addFacilitator(facilitators){
-    this.facilitators.push(facilitators)
+  addFacilitator(facilitator){
+    if (facilitator.status === PersonalStatus.DELIBERATING) throw new Error('Busy person must not be a CorruptionResistantOfficer.');
+    if (facilitator.age < 16) throw new Error('Too young to be a CRO.');
+    this.updateCRO(facilitator);//citizen=busy,cro=busy
   }
   addProfessional(domain, professional){
-    this.professionals[domain].push(professional)
+    if(professional.status === PersonalStatus.DELIBERATING) throw new Error('Professional candidate has to be not busy.');
+    this.updateCRO(professional);//citizen=busy,cro=busy
   }
 
   getPopulation(){
@@ -194,29 +198,43 @@ export class StateMachine implements ClockInterface {
   }
   updateCRO(cro){
     let s = state.get();
-    this.facilitators = this.facilitators.map(p=>{
-      if(p.id === cro.id){
-        return cro;
-      } else {
-        return p;
-      }
-    })
+
+    if(this.facilitators.length > 0){
+      this.facilitators = this.facilitators.map(p=>{
+        if(p.id === cro.id){
+          return cro;
+        } else {
+          return p;
+        }
+      })  
+    } else {
+      this.facilitators.push(cro);
+    }
     for(var j=0; j<s.domains.length; j++){
-      this.professionals[s.domains[j]] = this.professionals[s.domains[j]].map(p=>{
+      if(this.professionals[s.domains[j]].length > 0){
+        this.professionals[s.domains[j]] = this.professionals[s.domains[j]].map(p=>{
+          if(p.id === cro.id){
+            return cro;
+          } else {
+            return p;
+          }
+        })
+      } else {
+        this.professionals[s.domains[j]].push(cro);
+      }
+    }
+    if(this.supremeJudges.length > 0){
+      this.supremeJudges = this.supremeJudges.map(p=>{
         if(p.id === cro.id){
           return cro;
         } else {
           return p;
         }
       })
+    } else {
+      this.supremeJudges.push(cro);
     }
-    this.supremeJudges = this.supremeJudges.map(p=>{
-      if(p.id === cro.id){
-        return cro;
-      } else {
-        return p;
-      }
-    })
+
     this.updateCitizen(cro);
   }
   appendRecord(dest:string, key:string, value:number):void {
@@ -261,18 +279,18 @@ export let state = (() => {
       DEFAULT_DOMAINS.map(d=>s.addDomain(d))
 
       for(var i=0; i<FACILITATORS_INITIAL_HEADCCOUNT; i++){
-        let ppl = s.people.filter(p=> (!p.isBusy && p.age > 16 && p.intelligenceDeviation > 49 ));
+        let ppl = s.people.filter(p=> (p.status === PersonalStatus.CANDIDATE && p.age > 16 && p.intelligenceDeviation > 49 ));
         let candidate = ppl[Random.number(0, ppl.length-1)]
         s.addFacilitator(new Facilitator(candidate))
       }
       for(var i=0; i<SUPREME_JUDGES_INITIAL_HEADCCOUNT; i++){
-        let ppl = s.people.filter(p=> (!p.isBusy && p.age > 16 && p.intelligenceDeviation > 60 ));
+        let ppl = s.people.filter(p=> (p.status === PersonalStatus.CANDIDATE && p.age > 16 && p.intelligenceDeviation > 60 ));
         let candidate = ppl[Random.number(0, ppl.length-1)]
         s.addSupremeJudge(new SupremeJudge(candidate))
       }
       for(var i=0; i<PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN; i++){
         for(var j=0; j<s.domains.length; j++){
-          let ppl = s.people.filter(p=> (!p.isBusy && p.age > 16 && p.intelligenceDeviation > 60 ));
+          let ppl = s.people.filter(p=> (p.status === PersonalStatus.CANDIDATE && p.age > 16 && p.intelligenceDeviation > 60 ));
           let candidate = ppl[Random.number(0, ppl.length-1)]
           s.addProfessional(s.domains[j], new Professional(candidate))
         }
@@ -322,7 +340,7 @@ export class Proposal implements ClockInterface {
   isApproved: boolean;
 
   constructor(proposer, problemType){
-    if(proposer.isBusy) throw new Error('Busy person cannot be a proposer');
+    if(proposer.status !== PersonalStatus.CANDIDATE) throw new Error('Busy person cannot be a proposer');
     if(proposer.age < 16) throw new Error('Too young to be a proposer');
 
     this.id = Random.uuid(40);
@@ -361,10 +379,18 @@ export class Proposal implements ClockInterface {
   }
   finishProposal(){
     this.isFinished = true;
-    this.proposer.isBusy = false;
-    this.representatives = this.representatives.map(r=>{ r.isBusy = false; return r; });
-    if(this.facilitator) this.facilitator.isBusy = false;
-    this.professionals = this.professionals.map(p=>{ p.isBusy = false; return p; });
+    this.proposer.status = PersonalStatus.INACTIVE;
+    this.representatives = this.representatives.map(r=>{
+      r.status = PersonalStatus.INACTIVE;
+      return r;
+    });
+    if(this.facilitator) {
+      this.facilitator.status = PersonalStatus.POOLED;
+    }
+    this.professionals = this.professionals.map(p=>{
+      p.status = PersonalStatus.INACTIVE;
+      return p;
+    });
     state.get().updateProposalWithParticipants(this);
   }
 
@@ -442,28 +468,27 @@ export class Proposal implements ClockInterface {
     }
   }
   assignProposer(proposer){
-    proposer.isBusy = true;
+    proposer.status = PersonalStatus.DELIBERATING;
     state.get().updateCitizen(proposer);
     return proposer;
   }
   pickFacilitator(){
     let s = state.get();
-    let candidates = s.facilitators.filter(f=> !f.isBusy )
+    let candidates = s.facilitators.filter(f=> f.status === PersonalStatus.CANDIDATE && f.age >= 16 )
     if(candidates.length > 0){
       let randIndex = Random.number(0, candidates.length-1)
       let selectedFacilitator = candidates[randIndex]
-      selectedFacilitator.isBusy = true
+      selectedFacilitator.status = PersonalStatus.DELIBERATING;
       s.facilitators[randIndex] = selectedFacilitator
       this.facilitator = selectedFacilitator
-      s.updateCRO(selectedFacilitator);
+      s.updateCRO(selectedFacilitator);//citizen=busy,cro=busy
     } else {
       this.finishProposal();
     }
   }
   pickRepresentatives(){
     let shuffledPeople = Util.shuffle(
-        state.get().people
-          .filter(p=> (!p.isBusy && 16 <= p.age) )
+        state.get().people.filter(p=> (p.status === PersonalStatus.CANDIDATE && 16 <= p.age) )
     ).filter(x=>x);
     if(shuffledPeople.length < 30) {
       // this.representatives = [];
@@ -472,7 +497,7 @@ export class Proposal implements ClockInterface {
       this.representatives = [...Array(this.representativeHeadcount)]
       .map((x,i)=>{
         let p = shuffledPeople[i]
-        p.isBusy = true;
+        p.status = PersonalStatus.DELIBERATING;
         state.get().updateCitizen(p);
         return p;
       })
@@ -487,11 +512,11 @@ export class Proposal implements ClockInterface {
   }
   pickProfessionals(){
     this.professionals = this.domains.map(d=>{
-      let candidates = state.get().professionals[d].filter(p=> !p.isBusy ).filter(x=>x)
+      let candidates = state.get().professionals[d].filter(p=> p.status === PersonalStatus.CANDIDATE ).filter(x=>x)
       if(candidates.length === 0) return;
       let randIndex = Random.number(0, candidates.length-1)
       let selectedProfessional = candidates[randIndex]
-      selectedProfessional.isBusy = true;
+      selectedProfessional.status = PersonalStatus.DELIBERATING;
       state.get().professionals[d][randIndex] = selectedProfessional;
       state.get().updateCRO(selectedProfessional);
       return selectedProfessional;
@@ -525,6 +550,12 @@ export enum LifeStage {
   DEATH = 'd',
   OTHER = 'o'
 }
+export enum PersonalStatus {
+  INACTIVE = 'inactive',
+  CANDIDATE = 'candidate',
+  POOLED = 'pooled',
+  DELIBERATING = 'deliberating'
+}
 export class Citizen implements ClockInterface {
   id: string;
   annualSalary: number;
@@ -538,7 +569,7 @@ export class Citizen implements ClockInterface {
   age: number;
   biologicallyCanBePregnant: boolean; 
   lifetime: number;
-  isBusy: boolean;
+  status: PersonalStatus;
 
   constructor(){
     this.id = Random.uuid(40)
@@ -557,7 +588,10 @@ export class Citizen implements ClockInterface {
     this.biologicallyCanBePregnant = !!Random.number(0, 1)
     this.lifetime = Random.number(65, 85) + Random.number(0, 35) - Random.number(0, 65)
     this.age = this.lifetime - Random.number(0, this.lifetime);
-    this.isBusy = false;
+    this.status = PersonalStatus.INACTIVE;
+  }
+  masquerade(){
+    this.status = PersonalStatus.CANDIDATE;
   }
   tick(){
     let context = this.validate();
@@ -696,7 +730,7 @@ export class Citizen implements ClockInterface {
           (this.annualSalary/12 > 5000 || this.intelligenceDeviation > 55)
           && Random.number(0, 365/3) === 0
           && this.age > 16
-          && !this.isBusy
+          && this.status === PersonalStatus.CANDIDATE
         ) {
           this.submitProposal();
         }
@@ -707,7 +741,7 @@ export class Citizen implements ClockInterface {
   }
   submitProposal(){
     state.get().submitProposal(this, ProblemTypes.NORMAL)
-    this.isBusy = true;
+    this.status = PersonalStatus.DELIBERATING;
   }
   passivePoliticalAction(context){
     // skip: passive action is automatic in the simulator
@@ -724,12 +758,10 @@ export class Citizen implements ClockInterface {
 }
 class CorruptionResistantOfficer extends Citizen {
   constructor(candidate: Citizen){
-    if (candidate.isBusy) throw new Error('Busy person must not be a CorruptionResistantOfficer');
-    if (candidate.age < 16) throw new Error('Too young to be a CRO.');
     super();
     let s = state.get();
 
-    this.isBusy = true;
+    this.status = PersonalStatus.POOLED;
     this.id = candidate.id
     this.annualSalary = candidate.annualSalary
     this.intelligenceDeviation = candidate.intelligenceDeviation
@@ -741,8 +773,6 @@ class CorruptionResistantOfficer extends Citizen {
     this.biologicallyCanBePregnant = candidate.biologicallyCanBePregnant
     this.lifetime = candidate.lifetime
     this.age = candidate.age
-
-    s.updateCRO(this);
   }
 }
 export class SupremeJudge extends CorruptionResistantOfficer {
@@ -782,14 +812,15 @@ export class Snapshot {
     let s = state.get();
 
     s.appendRecord('population', `hd${tick}`, s.people.length);
-    s.appendRecord('population_isBusy', `hd${tick}`, s.people.filter(p=>p.isBusy).length);
+    s.appendRecord('population_in_deliberation', `hd${tick}`, s.people.filter(p=> p.status === PersonalStatus.DELIBERATING ).length);
+    s.appendRecord('population_ready', `hd${tick}`, s.people.filter(p=>p.status === PersonalStatus.CANDIDATE).length);
     s.appendRecord('num_facilitator', `hd${tick}`, s.facilitators.length);
     s.appendRecord(`num_professional_${s.domains[0]}`, `hd${tick}`, s.professionals[s.domains[0]].length);
     s.appendRecord(`num_supremeJudge`, `hd${tick}`, s.supremeJudges.length);
     s.appendRecord(`num_proposals`, `hd${tick}`, s.proposals.length);
     s.appendRecord(`num_proposalOngoing`, `hd${tick}`, s.proposals.filter(p=>!p.isFinished).length);
     s.appendRecord(`num_proposalApproved`, `hd${tick}`, s.proposals.filter(p=>p.isApproved).length);
-    s.appendRecord('num_facilitator_isBusy', `hd${tick}`, s.facilitators.filter(p=>p.isBusy).length);
-    s.appendRecord(`num_supremeJudge_isBusy`, `hd${tick}`, s.supremeJudges.filter(p=>p.isBusy).length);
+    s.appendRecord('num_facilitator_in_deliberation', `hd${tick}`, s.facilitators.filter(p=>p.status === PersonalStatus.DELIBERATING).length);
+    s.appendRecord(`num_supremeJudge_in_deliberation`, `hd${tick}`, s.supremeJudges.filter(p=>p.status === PersonalStatus.DELIBERATING).length);
   }
 }
