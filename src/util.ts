@@ -107,7 +107,7 @@ export function squash(arr){
 export function uniq(array) {
   const knownElements = new Set();
   for (const elem of array) {
-    knownElements.add(elem); // 同じ値を何度追加しても問題ない
+    knownElements.add(elem);
   }
   return Array.from(knownElements);
 }

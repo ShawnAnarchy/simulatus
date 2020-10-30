@@ -23,6 +23,12 @@ interface ClockInterface {
   tick(): void;
   validate(): ValidationResult;
 }
+export enum StateMachineError {
+  FACILITATOR_DUPLICATION = 'FACILITATOR_DUPLICATION',
+  CITIZEN_DUPLICATION = 'CITIZEN_DUPLICATION',
+  FACILITATOR_OVERFLOW = 'FACILITATOR_OVERFLOW',
+  OK = 'OK'
+}
 
 export class StateMachine implements ClockInterface {
   people: Array<Citizen>;
@@ -105,21 +111,41 @@ export class StateMachine implements ClockInterface {
     if (judge.status === PersonalStatus.POOLED) throw new Error('Corruption Resistant Officers cannot be a SupremeJudge.');
     if (judge.status === PersonalStatus.DELIBERATING) throw new Error('You cannot be a SupremeJudge while you are in a deliberation.');
     if (judge.age < 16) throw new Error('Too young to be a CRO.');
-    this.updateCRO(judge);//citizen=busy,cro=busy
+    judge.status = PersonalStatus.POOLED;
+    if (this.supremeJudges.includes(judge)) {
+      this.updateCRO(judge);
+    } else {
+      this.supremeJudges.push(judge);
+      this.updateCitizen(judge);
+    }
   }
   addFacilitator(facilitator){
     if (facilitator.status === PersonalStatus.INACTIVE) throw new Error('Facilitator must join the mixing.');
     if (facilitator.status === PersonalStatus.POOLED) throw new Error('Corruption Resistant Officers cannot be a facilitator.');
     if (facilitator.status === PersonalStatus.DELIBERATING) throw new Error('You cannot be a facilitator while you are in a deliberation.');
     if (facilitator.age < 16) throw new Error('Too young to be a CRO.');
-    this.updateCRO(facilitator);//citizen=busy,cro=busy
+    if (this.facilitators.length > FACILITATORS_INITIAL_HEADCCOUNT) throw new Error('FACILITATOR is too much.');
+
+    facilitator.status = PersonalStatus.POOLED;
+    if (this.facilitators.includes(facilitator)) {
+      this.updateCRO(facilitator);
+    } else {
+      this.facilitators.push(facilitator);
+      this.updateCitizen(facilitator);
+    }
   }
   addProfessional(domain, professional){
     if (professional.status === PersonalStatus.INACTIVE) throw new Error('Professional must join the mixing.');
     if (professional.status === PersonalStatus.POOLED) throw new Error('Corruption Resistant Officers cannot be a professional.');
     if (professional.status === PersonalStatus.DELIBERATING) throw new Error('You cannot be a professional while you are in a deliberation.');
     if (professional.age < 16) throw new Error('Too young to be a CRO.');
-    this.updateCRO(professional);//citizen=busy,cro=busy
+    professional.status = PersonalStatus.POOLED;
+    if (this.professionals[domain].includes(professional)) {
+      this.updateCRO(professional);
+    } else {
+      this.professionals[domain].push(professional);
+      this.updateCitizen(professional);
+    }
   }
 
   getPopulation(){
@@ -131,6 +157,9 @@ export class StateMachine implements ClockInterface {
   tick(){
     let context = this.validate();
     if( !context.code ) throw new Error(`DAO4N Error: Assumption viorated. ${context.report}`)
+    if( context.code === StateMachineError.FACILITATOR_DUPLICATION ) throw new Error(`FACILITATOR is inconsistently duplicated.`)
+    if( context.code === StateMachineError.CITIZEN_DUPLICATION ) throw new Error(`CITIZEN is inconsistently duplicated.`)
+    if( context.code === StateMachineError.FACILITATOR_OVERFLOW ) throw new Error(`FACILITATOR is too much.`)
 
     // TODO tick all actors
     this.people.map(c=> c.tick() )
@@ -160,10 +189,28 @@ export class StateMachine implements ClockInterface {
     // TODO check budget exceeding
     // TODO check deregistration rate
 
-    return {
-      code: "a",
-      report: ""
+    if(this.facilitators.length !== Util.uniq(this.facilitators).length){
+      return {
+        code: StateMachineError.FACILITATOR_DUPLICATION,
+        report: ""
+      }
+    } else if(this.people.length !== Util.uniq(this.people).length){
+      return {
+        code: StateMachineError.CITIZEN_DUPLICATION,
+        report: ""
+      }
+    } else if(this.facilitators.length > FACILITATORS_INITIAL_HEADCCOUNT){
+      return {
+        code: StateMachineError.FACILITATOR_OVERFLOW,
+        report: ""
+      }
+    } else {
+      return {
+        code: StateMachineError.OK,
+        report: ""
+      }
     }
+
   }
   submitProposal(proposer, problemType): Proposal{
     let proposal = new Proposal(proposer, problemType);
@@ -207,17 +254,13 @@ export class StateMachine implements ClockInterface {
   updateCRO(cro){
     let s = state.get();
 
-    if(this.facilitators.length > 0){
-      this.facilitators = this.facilitators.map(p=>{
-        if(p.id === cro.id){
-          return cro;
-        } else {
-          return p;
-        }
-      })  
-    } else {
-      this.facilitators.push(cro);
-    }
+    this.facilitators = this.facilitators.map(p=>{
+      if(p.id === cro.id){
+        return cro;
+      } else {
+        return p;
+      }
+    })  
     for(var j=0; j<s.domains.length; j++){
       if(this.professionals[s.domains[j]].length > 0){
         this.professionals[s.domains[j]] = this.professionals[s.domains[j]].map(p=>{
@@ -289,19 +332,25 @@ export let state = (() => {
 
       for(var i=0; i<FACILITATORS_INITIAL_HEADCCOUNT; i++){
         let ppl = s.people.filter(p=> (p.status === PersonalStatus.CANDIDATE && p.age > 16 && p.intelligenceDeviation > 49 ));
-        let candidate = ppl[Random.number(0, ppl.length-1)]
-        s.addFacilitator(new Facilitator(candidate))
+        if(ppl.length > 0){
+          let candidate = ppl[Random.number(0, ppl.length-1)]
+          s.addFacilitator(new Facilitator(candidate))
+        }
       }
       for(var i=0; i<SUPREME_JUDGES_INITIAL_HEADCCOUNT; i++){
         let ppl = s.people.filter(p=> (p.status === PersonalStatus.CANDIDATE && p.age > 16 && p.intelligenceDeviation > 60 ));
-        let candidate = ppl[Random.number(0, ppl.length-1)]
-        s.addSupremeJudge(new SupremeJudge(candidate))
+        if(ppl.length > 0){
+          let candidate = ppl[Random.number(0, ppl.length-1)]
+          s.addSupremeJudge(new SupremeJudge(candidate))
+        }
       }
       for(var i=0; i<PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN; i++){
         for(var j=0; j<s.domains.length; j++){
           let ppl = s.people.filter(p=> (p.status === PersonalStatus.CANDIDATE && p.age > 16 && p.intelligenceDeviation > 60 ));
-          let candidate = ppl[Random.number(0, ppl.length-1)]
-          s.addProfessional(s.domains[j], new Professional(candidate))
+          if(ppl.length > 0){
+            let candidate = ppl[Random.number(0, ppl.length-1)]
+            s.addProfessional(s.domains[j], new Professional(candidate))
+          }
         }
       }
       return s;
@@ -399,7 +448,7 @@ export class Proposal implements ClockInterface {
       this.facilitator.status = PersonalStatus.POOLED;
     }
     this.professionals = this.professionals.map(p=>{
-      p.status = PersonalStatus.INACTIVE;
+      p.status = PersonalStatus.POOLED;
       return p;
     });
     state.get().updateProposalWithParticipants(this);
@@ -485,12 +534,11 @@ export class Proposal implements ClockInterface {
   }
   pickFacilitator(){
     let s = state.get();
-    let candidates = s.facilitators.filter(f=> f.status === PersonalStatus.CANDIDATE && f.age >= 16 )
+    let candidates = s.facilitators.filter(f=> f.status === PersonalStatus.POOLED && f.age >= 16 )
     if(candidates.length > 0){
       let randIndex = Random.number(0, candidates.length-1)
       let selectedFacilitator = candidates[randIndex]
       selectedFacilitator.status = PersonalStatus.DELIBERATING;
-      s.facilitators[randIndex] = selectedFacilitator
       this.facilitator = selectedFacilitator
       s.updateCRO(selectedFacilitator);//citizen=busy,cro=busy
     } else {
@@ -523,12 +571,11 @@ export class Proposal implements ClockInterface {
   }
   pickProfessionals(){
     this.professionals = this.domains.map(d=>{
-      let candidates = state.get().professionals[d].filter(p=> p.status === PersonalStatus.CANDIDATE ).filter(x=>x)
+      let candidates = state.get().professionals[d].filter(p=> p.status === PersonalStatus.POOLED ).filter(x=>x)
       if(candidates.length === 0) return;
       let randIndex = Random.number(0, candidates.length-1)
       let selectedProfessional = candidates[randIndex]
       selectedProfessional.status = PersonalStatus.DELIBERATING;
-      state.get().professionals[d][randIndex] = selectedProfessional;
       state.get().updateCRO(selectedProfessional);
       return selectedProfessional;
     })
@@ -612,7 +659,10 @@ export class Citizen implements ClockInterface {
       state.get().removeCitizen(this)
     }
 
-    if(this.status === PersonalStatus.INACTIVE && Random.number(0,3)%3 !== 0){
+    if(
+        (context.code === LifeStage.SUFFRAGE || context.code === LifeStage.WORKFORCE)
+        && this.status === PersonalStatus.INACTIVE
+      ){
       this.masquerade();      
     }
 
@@ -834,7 +884,13 @@ export class Snapshot {
     s.appendRecord(`num_professional_${s.domains[0]}`, `hd${tick}`, s.professionals[s.domains[0]].length);
     s.appendRecord(`num_supremeJudge`, `hd${tick}`, s.supremeJudges.length);
     s.appendRecord(`num_proposals`, `hd${tick}`, s.proposals.length);
-    s.appendRecord(`num_proposalOngoing`, `hd${tick}`, s.proposals.filter(p=>!p.isFinished).length);
+    s.appendRecord(`num_proposalOngoing`, `hd${tick}`, s.proposals.filter(p=>{
+      let c = p.validate().code;
+      return c === ProposalPhases.DELIBERATION
+      || c === ProposalPhases.DOMAIN_ASSIGNMENT
+      || c === ProposalPhases.PROFESSIONAL_ASSIGNMENT
+      || c === ProposalPhases.FINAL_JUDGE
+    }).length);
     s.appendRecord(`num_proposalApproved`, `hd${tick}`, s.proposals.filter(p=>p.isApproved).length);
     s.appendRecord('num_facilitator_in_deliberation', `hd${tick}`, s.facilitators.filter(p=>p.status === PersonalStatus.DELIBERATING).length);
     s.appendRecord(`num_supremeJudge_in_deliberation`, `hd${tick}`, s.supremeJudges.filter(p=>p.status === PersonalStatus.DELIBERATING).length);
