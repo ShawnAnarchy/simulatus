@@ -38,7 +38,7 @@ describe('StateMachine', () => {
       let s = state.init();
       for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
       s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
-      let proposer = s.people[0];
+      let proposer = s.people[0].masquerade();
       proposer.masquerade();
       s.submitProposal(proposer, ProblemTypes.NORMAL);
       expect(s.proposals[0].representatives.length).toBe(REPRESENTATIVE_HEADCOUNT);
@@ -392,7 +392,7 @@ describe('Proposal', () => {
         let s = state.init();
         for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
         s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
-        let proposer = s.people[0];
+        let proposer = s.people[0].masquerade();
         proposer.intelligenceDeviation = 50;
         let proposal = s.submitProposal(proposer, ProblemTypes.NORMAL);
         expect(proposal.proposer.status).toBe(PersonalStatus.DELIBERATING);
@@ -411,7 +411,7 @@ describe('Proposal', () => {
           p.masquerade();
           return p;
         });//avoid random failure
-        let proposer = s.people[0];
+        let proposer = s.people[0].masquerade();
         proposer.intelligenceDeviation = 50.1;
         s.submitProposal(proposer, ProblemTypes.NORMAL);
         s.tick();

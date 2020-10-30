@@ -26,7 +26,8 @@ let writeRecords = Util.writeRecords;
 
     if((i/2)%1 === 0){
       let summary = s.summary();
-      console.log(`day${i/2} with freeRatio=${summary.freeRatio}%  ${summary.ongoingProposals}props`) 
+      console.log(`day${i/2} with freeRatio=${summary.freeRatio}%  ${summary.ongoingProposals}props  bottleneck:${summary.bottleneck}`) 
+
     }
   }
   console.log(`ticking finished!`)

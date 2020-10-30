@@ -21,7 +21,7 @@ export function shuffle(array) {
   return array;
 }
 
-export function trace(arg:any, filename:string?):void {
+export function trace(arg:any, filename:any):void {
   let str:string = "";
   str = stringify(arg)
   if(str === 'undefined' || str === undefined ) throw new Error('stringify failed')
@@ -105,4 +105,16 @@ export function uniq(array) {
     knownElements.add(elem);
   }
   return Array.from(knownElements);
+}
+export function filterM<T>(jsMapData: Map<string, T>, cb:(key:string, value: T, index:number) => void):Map<string, T>{
+  let keys:Array<string> = Object.keys(jsMapData);
+  let newMap:Map<string, T> = new Map<string, T>();
+
+  keys.filter((key:string,index:number)=>{
+    return cb(key, jsMapData[key], index);
+  }).map((key:string)=>{
+    newMap[key] = jsMapData[key];
+  })
+
+  return newMap;
 }

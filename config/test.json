@@ -2,7 +2,7 @@
   "global": {
     "tickingTime": 0.5,
     "simulateForDays": 365,
-    "participationThreshold": 90,
+    "participationThreshold": 0,
     "bottleneckThreshold": 100
   },
   "nation": {

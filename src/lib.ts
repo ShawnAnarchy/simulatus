@@ -54,9 +54,9 @@ export class StateMachine implements ClockInterface {
   professionals: Map<string, Array<Professional>>;
   deadPeople: Array<Citizen>;
   records: Map<string, Map<string, number>>;
-  debugger: Map<string, number>;
   debugCount: number;
   bottleneck: Map<string, number>;
+  lastLap: number;
 
 
   constructor(){
@@ -77,28 +77,29 @@ export class StateMachine implements ClockInterface {
     this.facilitators = [];
     this.professionals = new Map<string,Array<Professional>>();
     this.deadPeople = [];
+
+    // analysis state
     this.records = new Map<string, Map<string, number>>();
+
+    // debugger state
     this.debugCount = 0;
-    this.debugger = new Map<string, number>();
-    this.lap('start');
     this.bottleneck = new Map<string, number>();
+    this.lastLap = 0;
   }
   lap(label){
     let key = `${this.debugCount}_${label}`;
     let value = Date.now();
-    this.debugger[key] = value;
 
+    let diff = 0;
+    if(this.lastLap > 0){
+      diff = value - this.lastLap;
+    }
 
-    // let keys = Object.keys(this.debugger)
-    // let latestLaps = [];
-    // for(var i=0; i<10; i++){
-    //   latestLaps.push(this.debugger[keys.length-i]);
-    // }
-    // let diff = Math.max(...latestLaps) - Math.min(...latestLaps);
-    // if(diff > BOTTLENECK_THRESHOLD){
-    //   this.bottleneck[key] = value;
-    // }  
+    if(diff > BOTTLENECK_THRESHOLD){
+      this.bottleneck[key] = diff;
+    }  
     this.debugCount++;
+    this.lastLap = value;
   }
 
   payTax(amount){
@@ -117,14 +118,7 @@ export class StateMachine implements ClockInterface {
     return citizen;
   }
   removeCitizen(citizen){
-    this.people = this.people.map((p,i) => {
-      if(p.id === citizen.id){
-        this.deadPeople.push(citizen);
-        return;
-      } else {
-        return p;
-      }
-    }).filter(x=>x);
+    this.people = this.people.filter((p,i) => p && p.id !== citizen.id )
   }
   addSupremeJudge(judge){
     if (judge.status === PersonalStatus.INACTIVE) throw new Error('SupremeJudge must join the mixing.');
@@ -168,12 +162,6 @@ export class StateMachine implements ClockInterface {
     }
   }
 
-  getPopulation(){
-    return this.people.length
-  }
-  getGDP(){
-    return this.people.map(p=> p.annualSalary ).reduce((sum, el) => sum + el, 0);
-  }
   tick(){
     let context = this.validate();
     if( !context.code ) throw new Error(`DAO4N Error: Assumption viorated. ${context.report}`)
@@ -239,7 +227,7 @@ export class StateMachine implements ClockInterface {
   }
   approveProposal(proposal){
     this.miscellaneousAdministrations.push(proposal.administrationToBeCreated)
-    this.miscellaneousAdministrations = this.miscellaneousAdministrations.filter(x=>x)
+    this.miscellaneousAdministrations = this.miscellaneousAdministrations
     proposal.isApproved = true;
     this.updateProposal(proposal);
     //TODO: Reward for participants
@@ -263,6 +251,7 @@ export class StateMachine implements ClockInterface {
     if(proposal.facilitator) this.updateCRO(proposal.facilitator);
   }
   updateCitizen(citizen){
+    if(!citizen) throw new Error('citizen is null');
     this.people = this.people.map(p=>{
       if(p.id === citizen.id){
         return citizen;
@@ -272,6 +261,7 @@ export class StateMachine implements ClockInterface {
     })
   }
   updateCRO(cro){
+    if(!cro) throw new Error('cro is null');
     let s = state.get();
 
     this.facilitators = this.facilitators.map(p=>{
@@ -314,8 +304,8 @@ export class StateMachine implements ClockInterface {
   }
   summary(){
     let s = state.get();
-    let population_suffrage = s.people.filter(p=>p.isSuffrage()).length;
-    let population_ready = s.people.filter(p=>p.status === PersonalStatus.CANDIDATE).length
+    let population_suffrage = s.people.filter(p=> p && p.isSuffrage()).length;
+    let population_ready = s.people.filter(p=> p && p.status === PersonalStatus.CANDIDATE).length
     let ongoingProposals = this.proposals.filter(p=>{
       let c = p.validate().code;
       return c === ProposalPhases.DELIBERATION
@@ -327,7 +317,8 @@ export class StateMachine implements ClockInterface {
       freeRatio: Math.ceil((population_ready/population_suffrage)*100),
       population_suffrage: population_suffrage,
       population_ready: population_ready,
-      ongoingProposals: ongoingProposals
+      ongoingProposals: ongoingProposals,
+      bottleneck: Util.stringify(s.bottleneck)
     }
   }
 
@@ -493,29 +484,27 @@ export class Proposal implements ClockInterface {
 
   tick(){
     let s = state.get();
-    // s.lap('prp_valbf');
     let context = this.validate()
-    // s.lap('prp_valaf');
     switch(context.code){
       case ProposalPhases.INITIAL_JUDGE:
         if(this.proposer.intelligenceDeviation > 50){
           // just tick if proposal is pseudo-reasonable
         } else {
           this.finishProposal()
-          // s.lap('prp_finishProposal');
+          s.lap('prp_finishProposal_first');
         }
         break;
       case ProposalPhases.FACILITATOR_ASSIGNMENT:
         this.pickFacilitator();
-        // s.lap('prp_pickFacilitator');
+        s.lap('prp_pickFacilitator');
         break;
       case ProposalPhases.DOMAIN_ASSIGNMENT:
         this.pickDomains()
-        // s.lap('prp_pickDomains');
+        s.lap('prp_pickDomains');
         break;
       case ProposalPhases.PROFESSIONAL_ASSIGNMENT:
         this.pickProfessionals()
-        // s.lap('prp_pickProfessionals');
+        s.lap('prp_pickProfessionals');
         break;
       case ProposalPhases.DELIBERATION:
         if(!this.isFinished){
@@ -524,6 +513,7 @@ export class Proposal implements ClockInterface {
           let dailyEffect = (avgTeacherintelligenceDeviation - 50)/this.durationDays
           this.representatives = this.representatives.map(r=> r.affectByDeliberation(dailyEffect) )
           this.modificationRequests();
+          s.lap('prp_DELIBERATION');
           // s.lap('prp_modificationRequests');
         }
         break;
@@ -531,12 +521,12 @@ export class Proposal implements ClockInterface {
         let forCount = this.quorum();
         if(forCount > this.representatives.length/2){
           state.get().approveProposal(this);
-          // s.lap('prp_approveProposal');
+          s.lap('prp_approveProposal');
           this.finishProposal();
-          // s.lap('prp_apfinishProposal1');
+          s.lap('prp_apfinishProposal1');
         } else {
           this.finishProposal();
-          // s.lap('prp_nonapfinishProposal2');
+          s.lap('prp_nonapfinishProposal2');
         }
         break;
       case ProposalPhases.HEADCOUNT_EXCEEDED:
@@ -596,7 +586,7 @@ export class Proposal implements ClockInterface {
   pickRepresentatives(){
     let shuffledPeople = Util.shuffle(
         state.get().people.filter(p=> (p.status === PersonalStatus.CANDIDATE && 16 <= p.age) )
-    ).filter(x=>x);
+    );
     if(shuffledPeople.length < 30) {
       // this.representatives = [];
       this.finishProposal();
@@ -615,11 +605,11 @@ export class Proposal implements ClockInterface {
     let shuffledDomains = Util.shuffle(state.get().domains);
     this.domains = [...Array(rand)]
       .map((x,i)=> shuffledDomains[i] )
-      .filter(x=>x)
+      
   }
   pickProfessionals(){
     this.professionals = this.domains.map(d=>{
-      let candidates = state.get().professionals[d].filter(p=> p.status === PersonalStatus.POOLED ).filter(x=>x)
+      let candidates = state.get().professionals[d].filter(p=> p.status === PersonalStatus.POOLED )
       if(candidates.length === 0) return;
       let randIndex = Random.number(0, candidates.length-1)
       let selectedProfessional = candidates[randIndex]
@@ -627,7 +617,7 @@ export class Proposal implements ClockInterface {
       state.get().updateCRO(selectedProfessional);
       return selectedProfessional;
     })
-    .filter(x=>x)
+    
   }
   modificationRequests(){
     this.progressismDegree += Random.number(0, 7) - Random.number(0, 5)
@@ -713,11 +703,11 @@ export class Citizen implements ClockInterface {
     let s = state.get();
     let context = this.validate();
 
-    // s.lap('ppl_removeCitizen_bf');
+    s.lap('ppl_removeCitizen_bf');
     if(context.code === LifeStage.DEATH){
       state.get().removeCitizen(this)
     }
-    // s.lap('ppl_removeCitizen_af');
+    s.lap('ppl_removeCitizen_af');
 
 
 
@@ -727,21 +717,15 @@ export class Citizen implements ClockInterface {
       ){
       this.masquerade();      
     }
-    // s.lap('ppl_masquerade');
 
     this.earn(context)
-    // s.lap('ppl_earn');
     this.payTax(context)
-    // s.lap('ppl_payTax');
     this.getWelfare(context)
-    // s.lap('ppl_getWelfare');
     this.activePoliticalAction(context)
-    // s.lap('ppl_pAct');
     this.passivePoliticalAction(context)
     
     this.age += TICKING_TIME/365
     this.validateAfter();
-    // s.lap('ppl_vAf');
   }
   validate(){
     if (this.age > this.lifetime) {

@@ -12,10 +12,10 @@ import num_facilitator_in_deliberation from './records/num_facilitator_in_delibe
 import num_supremeJudge_in_deliberation from './records/num_supremeJudge_in_deliberation';
 import d1604036882413 from '../logs/1604036882413';
 import d1604037541962 from '../logs/1604037541962';
+import bottleneck from '../logs/bottleneck';
 let graph = new Graph();
 
 (()=>{
-  graph.line('freeRatio', freeRatio);
 
   document.getElementById('freeRatio').addEventListener('click', e=>{
     graph.line('freeRatio', freeRatio);
@@ -34,6 +34,9 @@ let graph = new Graph();
   })
   document.getElementById('1604037541962').addEventListener('click', e=>{
     graph.line('1604037541962', d1604037541962);
+  })
+  document.getElementById('bottleneck').addEventListener('click', e=>{
+    graph.line('bottleneck', bottleneck);
   })
   
 
