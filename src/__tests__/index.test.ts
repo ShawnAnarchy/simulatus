@@ -48,9 +48,12 @@ describe('StateMachine', () => {
     it('should create new proposal.', () => {
       let s = state.init();
       for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
-      s.people = mapM(s.people, (k,v)=>{ v.age += 16; return v; });//avoid random failure
+      s.people = mapM(s.people, (k,v)=>{
+        v.age += 16;
+        v.lifetime += 16;
+        return v;
+      });//avoid random failure
       let proposer = firstM(s.people).masquerade();
-      proposer.masquerade();
       s.submitProposal(proposer, ProblemTypes.NORMAL);
       expect(firstM(s.proposals).representatives.length).toBe(REPRESENTATIVE_HEADCOUNT);
       expect(firstM(s.proposals).representatives).toEqual(
@@ -115,11 +118,11 @@ describe('Snapshot', () => {
         expect(lengthM(s.people)).toBe(1);
         expect(s.records['population']).toBe(undefined);
         Snapshot.save(1);
-        expect(Object.keys(s.records['population']).length).toBe(1);
+        expect( lengthM(s.records['population']) ).toBe(1);
         s.addCitizen().masquerade();
         expect(lengthM(s.people)).toBe(2);
         Snapshot.save(2);
-        expect(Object.keys(s.records['population']).length).toBe(2);
+        expect( lengthM(s.records['population']) ).toBe(2);
       })
       it('should add a record to the memory storage for deliberating rate', () => {
         let s = state.get();
@@ -199,23 +202,15 @@ describe('Snapshot', () => {
     })
     it('should have the same # of ongoing proposals and busy facilitators.', () => {
       let s = state.get();
-      let keys1 = Object.keys(s.records['num_facilitator_in_deliberation']);
-      let lastKey1 = keys1[keys1.length-1];
-      let BUSY_FACILITATOR_COUNT = s.records['num_facilitator_in_deliberation'][lastKey1]
-      let keys2 = Object.keys(s.records['num_proposalOngoing']);
-      let lastKey2 = keys1[keys1.length-1];
-      let ONGOING_PROPOSALS_COUNT = s.records['num_proposalOngoing'][lastKey2]
-
-      let keys3 = Object.keys(s.records['num_proposals']);
-      let lastKey3 = keys1[keys1.length-1];
-      let PROPOSALS_COUNT = s.records['num_proposals'][lastKey2]
-
+      let BUSY_FACILITATOR_COUNT:number = lastM(s.records['num_facilitator_in_deliberation'])
+      let ONGOING_PROPOSALS_COUNT:number = lastM(s.records['num_proposalOngoing'])
+      let PROPOSALS_COUNT:number = lastM(s.records['num_proposals'])
       expect(ONGOING_PROPOSALS_COUNT).toBeLessThan(PROPOSALS_COUNT);
       expect(ONGOING_PROPOSALS_COUNT).toBe(BUSY_FACILITATOR_COUNT);
     })
     it('should have approved proposal.', () => {
       let s = state.get();
-      let APPROVED_PROPOSALS_COUNT = Object.keys(s.records['num_proposalApproved']).length
+      let APPROVED_PROPOSALS_COUNT = lengthM(s.records['num_proposalApproved'])
       expect(APPROVED_PROPOSALS_COUNT).toBeGreaterThan(0);
     })
   })

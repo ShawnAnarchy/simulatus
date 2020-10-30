@@ -133,11 +133,19 @@ export function mapM<T>(jsMapData: Map<string, T>, cb:(key:string, value: T, ind
 }
 export function firstM<T>(jsMapData: Map<string, T>): T{
   let keys:Array<string> = Object.keys(jsMapData);
-  return jsMapData[keys[0]];
+  if(keys.length > 0){
+    return jsMapData[keys[0]];
+  } else {
+    throw new Error('firstM for the empty map.');
+  }
 }
 export function lastM<T>(jsMapData: Map<string, T>): T{
   let keys:Array<string> = Object.keys(jsMapData);
-  return jsMapData[keys[keys.length-1]];
+  if(keys.length > 0){
+    return jsMapData[keys[keys.length-1]];
+  } else {
+    throw new Error('firstM for the empty map.');
+  }
 }
 export function keyM<T>(jsMapData: Map<string, T>):string{
   return Object.keys(jsMapData)[0];
@@ -149,11 +157,12 @@ export function lengthM<T>(jsMapData: Map<string, T>):number{
   return Object.keys(jsMapData).length;
 }
 export function uniqM<T>(jsMapData: Map<string, T>):Map<string, T>{
-  return filterM(jsMapData, (k,v)=> !v );
+  return filterM(jsMapData, (k,v)=> !!v );
 }
 export function sampleM<T>(jsMapData: Map<string, T>): T{
+  let rand = Random.number(0, lengthM(jsMapData)-1);
   let kv = filterM(jsMapData, (k,v,i)=>{
-    return i === Random.number(0, lengthM(jsMapData)-1);
+    return i === rand;
   })
-  return valueM(kv);
+  return firstM(kv)
 }

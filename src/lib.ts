@@ -1,9 +1,10 @@
 import * as Random from './random'
-import * as Util from './util'
-const {
+import {
   fetchRecord,
   squash,
   shuffle,
+  stringify,
+  uniq,
   mapM,
   filterM,
   firstM,
@@ -13,8 +14,7 @@ const {
   lengthM,
   uniqM,
   sampleM
-} = Util;
-
+} from './util'
 
 import {
   TICKING_TIME,
@@ -214,7 +214,7 @@ export class StateMachine implements ClockInterface {
     // TODO check budget exceeding
     // TODO check deregistration rate
 
-    if(this.facilitators.length !== Util.uniq(this.facilitators).length){
+    if(this.facilitators.length !== uniq(this.facilitators).length){
       return {
         code: StateMachineError.FACILITATOR_DUPLICATION,
         report: ""
@@ -322,7 +322,7 @@ export class StateMachine implements ClockInterface {
       population_suffrage: population_suffrage,
       population_ready: population_ready,
       ongoingProposals: ongoingProposals,
-      bottleneck: Util.stringify(s.bottleneck)
+      bottleneck: stringify(s.bottleneck)
     }
   }
 
@@ -363,14 +363,14 @@ export let state = (() => {
       DEFAULT_DOMAINS.map(d=>s.addDomain(d))
 
       for(var i=0; i<FACILITATORS_INITIAL_HEADCCOUNT; i++){
-        let candidates = filterM(s.people, (k,v)=> (v.status === PersonalStatus.CANDIDATE && v.age > 16 && v.intelligenceDeviation > 49 ));
+        let candidates = filterM(s.people, (k,v)=> (v.status === PersonalStatus.CANDIDATE && v.age >= 16 && v.intelligenceDeviation > 49 ));
         if(lengthM(candidates) > 0){
           let candidate = sampleM(candidates)
           s.addFacilitator(new Facilitator(candidate))
         }
       }
       for(var i=0; i<SUPREME_JUDGES_INITIAL_HEADCCOUNT; i++){
-        let candidates = filterM(s.people, (k,v)=> (v.status === PersonalStatus.CANDIDATE && v.age > 16 && v.intelligenceDeviation > 60 ));
+        let candidates = filterM(s.people, (k,v)=> (v.status === PersonalStatus.CANDIDATE && v.age >= 16 && v.intelligenceDeviation > 60 ));
         if(lengthM(candidates) > 0){
           let candidate = sampleM(candidates)
           s.addSupremeJudge(new SupremeJudge(candidate))
@@ -378,7 +378,7 @@ export let state = (() => {
       }
       for(var i=0; i<PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN; i++){
         for(var j=0; j<s.domains.length; j++){
-          let candidates = filterM(s.people, (k,v)=> (v.status === PersonalStatus.CANDIDATE && v.age > 16 && v.intelligenceDeviation > 60 ));
+          let candidates = filterM(s.people, (k,v)=> (v.status === PersonalStatus.CANDIDATE && v.age >= 16 && v.intelligenceDeviation > 60 ));
           if(lengthM(candidates) > 0){
             let candidate = sampleM(candidates);
             s.addProfessional(s.domains[j], new Professional(candidate))
@@ -598,27 +598,26 @@ export class Proposal implements ClockInterface {
       let cache = [];
       this.representatives = [...Array(this.representativeHeadcount)]
       .map((v,i)=>{
-        let rand = Random.number(0, lengthM(candidates)-1);
-        while(cache.includes(rand)){
+        let candidate = sampleM(candidates);
+        while(!candidate || cache.includes(candidate)){
           // refresh rand until it is to be unique.
-          rand = Random.number(0, lengthM(candidates)-1);
+          candidate = sampleM(candidates);
         }
-        cache.push(rand);
-        let p = candidates[rand];
-        p.status = PersonalStatus.DELIBERATING;
-        s.updateCitizen(p);
+        cache.push(candidate);
 
-        return p;
+        candidate.status = PersonalStatus.DELIBERATING;
+        s.updateCitizen(candidate);
+
+        return candidate;
       })
     }
   }
   pickDomains(){
     let s = state.get();
     let rand = Random.number(0, s.domains.length-1);
-    let shuffledDomains = Util.shuffle(s.domains);
+    let shuffledDomains = shuffle(s.domains);
     this.domains = [...Array(rand)]
-      .map((x,i)=> shuffledDomains[i] )
-      
+      .map((x,i)=> shuffledDomains[i] );      
   }
   pickProfessionals(){
     this.professionals = this.domains.map(d=>{
