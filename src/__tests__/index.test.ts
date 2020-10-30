@@ -28,7 +28,18 @@ import {
   PersonalStatus
 } from '../lib';
   
-const fetchRecord = Util.fetchRecord;
+const {
+  fetchRecord,
+  mapM,
+  filterM,
+  firstM,
+  lastM,
+  keyM,
+  valueM,
+  lengthM,
+  uniqM
+} = Util;
+
 const context = describe;
 
 
@@ -37,12 +48,12 @@ describe('StateMachine', () => {
     it('should create new proposal.', () => {
       let s = state.init();
       for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
-      s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
-      let proposer = s.people[0].masquerade();
+      s.people = mapM(s.people, (k,v)=>{ v.age += 16; return v; });//avoid random failure
+      let proposer = firstM(s.people).masquerade();
       proposer.masquerade();
       s.submitProposal(proposer, ProblemTypes.NORMAL);
-      expect(s.proposals[0].representatives.length).toBe(REPRESENTATIVE_HEADCOUNT);
-      expect(s.proposals[0].representatives).toEqual(
+      expect(firstM(s.proposals).representatives.length).toBe(REPRESENTATIVE_HEADCOUNT);
+      expect(firstM(s.proposals).representatives).toEqual(
         expect.not.arrayContaining([null,undefined])
       );
     })
@@ -51,25 +62,25 @@ describe('StateMachine', () => {
     it('should not have conflict.', () => {
       let s = state.init();
       for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
-      expect(s.people.length).toBe(ENOUGH_POPULATION)
-      expect(Util.uniq(s.people.map(p=>p.id)).length).toBe(ENOUGH_POPULATION)
+      expect(lengthM(s.people)).toBe(ENOUGH_POPULATION)
+      expect(lengthM(uniqM(mapM(s.people, (k,v)=>v)))).toBe(ENOUGH_POPULATION)
     })
   })
   describe('addFacilitator', () => {
     it('should be free as facilitator but cannot be a candidate of other roles.', () => {
       let s = state.get();
-      let citizen = s.people[0] ? s.people[0] : s.addCitizen().masquerade();
+      let citizen = firstM(s.people) ? firstM(s.people) : s.addCitizen().masquerade();
 
       let facilitator = new Facilitator(citizen);
       facilitator.masquerade();
       facilitator.age = 16;
       s.addFacilitator(facilitator);
       expect(s.facilitators[0].status).toBe(PersonalStatus.POOLED);
-      expect(s.people[0].status).toBe(PersonalStatus.POOLED);
+      expect(firstM(s.people).status).toBe(PersonalStatus.POOLED);
     });
     it('should omit a candidate less than 16yo.', () => {
       let s = state.get();
-      let citizen = s.people[0];
+      let citizen = firstM(s.people);
       let facilitator = new Facilitator(citizen);
       facilitator.status = PersonalStatus.CANDIDATE;
       facilitator.age = 15;
@@ -79,7 +90,7 @@ describe('StateMachine', () => {
     })
     it('should omit a candidate who is busy.', () => {
       let s = state.get();
-      let citizen = s.people[0];
+      let citizen = firstM(s.people);
       let facilitator = new Facilitator(citizen);
       facilitator.status = PersonalStatus.DELIBERATING;
       facilitator.age = 16;
@@ -99,20 +110,20 @@ describe('Snapshot', () => {
       });
       it('should add a record to the memory storage for population', () => {
         let s = state.get();
-        expect(s.people.length).toBe(0);
+        expect(lengthM(s.people)).toBe(0);
         s.addCitizen().masquerade();
-        expect(s.people.length).toBe(1);
+        expect(lengthM(s.people)).toBe(1);
         expect(s.records['population']).toBe(undefined);
         Snapshot.save(1);
         expect(Object.keys(s.records['population']).length).toBe(1);
         s.addCitizen().masquerade();
-        expect(s.people.length).toBe(2);
+        expect(lengthM(s.people)).toBe(2);
         Snapshot.save(2);
         expect(Object.keys(s.records['population']).length).toBe(2);
       })
       it('should add a record to the memory storage for deliberating rate', () => {
         let s = state.get();
-        s.people[0].status = PersonalStatus.DELIBERATING;
+        firstM(s.people).status = PersonalStatus.DELIBERATING;
         Snapshot.save(3);
         let record = s.records['population_in_deliberation'];
         expect(record.hd2).toBe(0);
@@ -120,9 +131,9 @@ describe('Snapshot', () => {
       })
       it('should add a record to the memory storage for # of facilitator', () => {
         let s = state.get();
-        s.people[0].status = PersonalStatus.CANDIDATE;
-        s.people[0].age = 16;
-        s.addFacilitator(new Facilitator(s.people[0]))
+        firstM(s.people).status = PersonalStatus.CANDIDATE;
+        firstM(s.people).age = 16;
+        s.addFacilitator(new Facilitator(firstM(s.people)))
         Snapshot.save(4);
         let record = s.records['num_facilitator'];
         expect(record.hd3).toBe(0);
@@ -130,8 +141,8 @@ describe('Snapshot', () => {
       })
       it('should add a record to the memory storage for # of professionals', () => {
         let s = state.get();
-        s.people[0].status = PersonalStatus.CANDIDATE;
-        s.addProfessional(s.domains[0], new Professional(s.people[0]))
+        firstM(s.people).status = PersonalStatus.CANDIDATE;
+        s.addProfessional(s.domains[0], new Professional(firstM(s.people)))
         Snapshot.save(5);
         let record = s.records[`num_professional_${s.domains[0]}`]
         expect(record.hd4).toBe(0);
@@ -139,8 +150,8 @@ describe('Snapshot', () => {
       })
       it('should add a record to the memory storage for # of supreme judges', () => {
         let s = state.get();
-        s.people[0].status = PersonalStatus.CANDIDATE;
-        s.addSupremeJudge(new SupremeJudge(s.people[0]))
+        firstM(s.people).status = PersonalStatus.CANDIDATE;
+        s.addSupremeJudge(new SupremeJudge(firstM(s.people)))
         Snapshot.save(6);
         let record = s.records['num_supremeJudge']
         expect(record.hd5).toBe(0);
@@ -149,10 +160,10 @@ describe('Snapshot', () => {
       it('should add a record to the memory storage for # of ongoing proposals', () => {
         let s = state.get();
         for(var i=0; i<60; i++) s.addCitizen().masquerade();
-        s.people[0].status = PersonalStatus.CANDIDATE;
-        s.submitProposal(s.people[0], ProblemTypes.NORMAL)
-        s.proposals[0].spentDays += 1;
-        s.proposals[0].facilitator = new Facilitator(s.people[0]);
+        firstM(s.people).status = PersonalStatus.CANDIDATE;
+        s.submitProposal(firstM(s.people), ProblemTypes.NORMAL)
+        firstM(s.proposals).spentDays += 1;
+        firstM(s.proposals).facilitator = new Facilitator(firstM(s.people));
         Snapshot.save(7);
         let record = s.records['num_proposalOngoing']
         expect(record.hd6).toBe(0);
@@ -221,8 +232,8 @@ describe('Proposal', () => {
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.UNKNOWN_ERROR);
-        expect(s.proposals.length).toBe(1);
-        expect(s.people.length).toBe(1);
+        expect(lengthM(s.proposals)).toBe(1);
+        expect(lengthM(s.people)).toBe(1);
         expect(proposal.representatives.length).toBeLessThan(REPRESENTATIVE_HEADCOUNT);
         expect(proposal.representatives).toEqual(
           expect.not.arrayContaining([null,undefined])
@@ -232,18 +243,18 @@ describe('Proposal', () => {
       it('should be failed because busy citizens cannot be reps.', () => {
         let s = state.init();
         for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
-        s.people = s.people.map(p=>{
-          p.status = PersonalStatus.DELIBERATING;
-          return p;
+        s.people = mapM(s.people, (k,v)=>{
+          v.status = PersonalStatus.DELIBERATING;
+          return v;
         });
-        let citizen = s.people[0];
+        let citizen = firstM(s.people);
         citizen.status = PersonalStatus.CANDIDATE;
         citizen.age = 16;
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.UNKNOWN_ERROR);
-        expect(s.proposals.length).toBe(1);
-        expect(s.people.length).toBe(ENOUGH_POPULATION);
+        expect(lengthM(s.proposals)).toBe(1);
+        expect(lengthM(s.people)).toBe(ENOUGH_POPULATION);
         expect(proposal.representatives.length).toBeLessThan(REPRESENTATIVE_HEADCOUNT);
         expect(proposal.representatives).toEqual(
           expect.not.arrayContaining([null,undefined])
@@ -253,28 +264,28 @@ describe('Proposal', () => {
       it('should be failed due to too young reps.', () => {
         let s = state.init();
         for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
-        s.people = s.people.map(p=>{ p.age = 15; return p; });
-        let citizen = s.people[0];
+        s.people = mapM(s.people, (k,v)=>{ v.age = 15; return v; });
+        let citizen = firstM(s.people);
         citizen.status = PersonalStatus.CANDIDATE;
         citizen.age = 16;
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.UNKNOWN_ERROR);
-        expect(s.proposals.length).toBe(1);
-        expect(s.people.length).toBe(ENOUGH_POPULATION);
+        expect(lengthM(s.proposals)).toBe(1);
+        expect(lengthM(s.people)).toBe(ENOUGH_POPULATION);
         expect(proposal.representatives.length).toBeLessThan(REPRESENTATIVE_HEADCOUNT);
         expect(proposal.representatives.filter(r=> r.status === PersonalStatus.DELIBERATING ).length).toBe(0);
       });
       it('should be successfully initialized.', () => {
         let s = state.init();
         for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
-        s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
-        let citizen = s.people[0];
+        s.people = mapM(s.people, (k,v)=>{ v.age += 16; return v; });//avoid random failure
+        let citizen = firstM(s.people);
         let proposal = s.submitProposal(citizen, ProblemTypes.NORMAL);
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.INITIAL_JUDGE);
-        expect(s.proposals.length).toBe(1);
-        expect(s.people.length).toBe(ENOUGH_POPULATION);
+        expect(lengthM(s.proposals)).toBe(1);
+        expect(lengthM(s.people)).toBe(ENOUGH_POPULATION);
         expect(proposal.representatives.length).toBe(REPRESENTATIVE_HEADCOUNT);
         expect(proposal.representatives).toEqual(
           expect.not.arrayContaining([null,undefined])
@@ -285,82 +296,85 @@ describe('Proposal', () => {
     context('ProposalPhases.FACILITATOR_ASSIGNMENT', () => {
       it('should be true.', () => {
         let s = state.get();
-        s.proposals[0].spentDays += 1;
-        let proposal = s.proposals[0];
+        firstM(s.proposals).spentDays += 1;
+        let proposal = firstM(s.proposals);
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.FACILITATOR_ASSIGNMENT);
-        expect(s.proposals.length).toBe(1);
-        expect(s.people.length).toBe(ENOUGH_POPULATION);
+        expect(lengthM(s.proposals)).toBe(1);
+        expect(lengthM(s.people)).toBe(ENOUGH_POPULATION);
         expect(proposal.representatives.filter(r=> r.status === PersonalStatus.DELIBERATING ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
     });
     context('ProposalPhases.DOMAIN_ASSIGNMENT', () => {
       it('should be true.', () => {
         let s = state.get();
-        s.people[0].status = PersonalStatus.CANDIDATE;
-        s.people[0].age = 16;
-        s.proposals[0].facilitator = new Facilitator(s.people[0]);
-        let proposal = s.proposals[0];
+        firstM(s.people).status = PersonalStatus.CANDIDATE;
+        firstM(s.people).age = 16;
+        firstM(s.proposals).facilitator = new Facilitator(firstM(s.people));
+        let proposal = firstM(s.proposals);
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.DOMAIN_ASSIGNMENT);
-        expect(s.people.length).toBe(ENOUGH_POPULATION);
+        expect(lengthM(s.people)).toBe(ENOUGH_POPULATION);
         expect(proposal.representatives.filter(r=> r.status === PersonalStatus.DELIBERATING ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
     });
     context('ProposalPhases.PROFESSIONAL_ASSIGNMENT', () => {
       it('should be true.', () => {
         let s = state.get();
-        s.proposals[0].domains = [TEST_DOMAIN];
-        let proposal = s.proposals[0];
+        firstM(s.proposals).domains = [TEST_DOMAIN];
+        let proposal = firstM(s.proposals);
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.PROFESSIONAL_ASSIGNMENT);
         expect(proposal.representatives.filter(r=> r.status === PersonalStatus.DELIBERATING ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
       it('No id confliction after a proposal', ()=>{
-        expect(Util.uniq(state.get().people.map(p=>p.id)).length).toBe(ENOUGH_POPULATION)
+        let s = state.get();
+        expect(lengthM(uniqM(mapM(s.people, (k,v)=>v)))).toBe(ENOUGH_POPULATION)
       })
     });
     context('ProposalPhases.DELIBERATION', () => {
       it('should be true.', () => {
         let s = state.get();
-        s.people[0].status = PersonalStatus.CANDIDATE;
-        s.people[0].age = 16;
-        s.professionals[TEST_DOMAIN] = [new Professional(s.people[0])];
-        s.proposals[0].professionals = [s.professionals[TEST_DOMAIN][0]];
-        let proposal = s.proposals[0];
+        firstM(s.people).status = PersonalStatus.CANDIDATE;
+        firstM(s.people).age = 16;
+        s.professionals[TEST_DOMAIN] = [new Professional(firstM(s.people))];
+        firstM(s.proposals).professionals = [s.professionals[TEST_DOMAIN][0]];
+        let proposal = firstM(s.proposals);
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.DELIBERATION);
-        expect(s.people.length).toBe(ENOUGH_POPULATION);
+        expect(lengthM(s.people)).toBe(ENOUGH_POPULATION);
         expect(proposal.representatives.filter(r=> r.status === PersonalStatus.DELIBERATING ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
       it('No id confliction after a proposal', ()=>{
-        expect(Util.uniq(state.get().people.map(p=>p.id)).length).toBe(ENOUGH_POPULATION)
+        let s = state.get();
+        expect(lengthM(uniqM(mapM(s.people, (k,v)=>v)))).toBe(ENOUGH_POPULATION)
       })
     });
     context('ProposalPhases.FINAL_JUDGE', () => {
       it('should be true.', () => {
         let s = state.get();
-        s.proposals[0].spentDays = s.proposals[0].durationDays
-        let proposal = s.proposals[0];
+        firstM(s.proposals).spentDays = firstM(s.proposals).durationDays
+        let proposal = firstM(s.proposals);
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.FINAL_JUDGE);
         expect(proposal.representatives.filter(r=> r.status === PersonalStatus.DELIBERATING ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
       it('No id confliction after a proposal', ()=>{
-        expect(Util.uniq(state.get().people.map(p=>p.id)).length).toBe(ENOUGH_POPULATION)
+        let s = state.get();
+        expect(lengthM(uniqM(mapM(s.people, (k,v)=>v)))).toBe(ENOUGH_POPULATION)
       })
     });
     context('ProposalPhases.FINISHED', () => {
       it('should be true and a miscellaneousAdministration should be added.', () => {
         let s = state.get();
-        s.proposals[0].representatives = s.proposals[0].representatives.map(r=>{
+        firstM(s.proposals).representatives = firstM(s.proposals).representatives.map(r=>{
           r.humanrightsPreference = 1000;
           r.progressismPreference = 1000;
           return r;
         });
-        s.proposals[0].humanrightsDegree = 100;
-        s.proposals[0].progressismDegree = 100;
-        let proposal = s.proposals[0];
+        firstM(s.proposals).humanrightsDegree = 100;
+        firstM(s.proposals).progressismDegree = 100;
+        let proposal = firstM(s.proposals);
         proposal.tick();
         let validationResult = proposal.validate();
         expect(validationResult.code).toBe(ProposalPhases.FINISHED);
@@ -368,10 +382,12 @@ describe('Proposal', () => {
         expect(proposal.representatives.filter(r=> r.status === PersonalStatus.DELIBERATING ).length).toBe(0);
       });
       it('No id confliction after a proposal', ()=>{
-        expect(Util.uniq(state.get().people.map(p=>p.id)).length).toBe(ENOUGH_POPULATION)
+        let s = state.get();
+        expect(lengthM(uniqM(mapM(s.people, (k,v)=>v)))).toBe(ENOUGH_POPULATION)
       })
       it('should be consistent regarding population', ()=>{
-        expect(state.get().people.length).toBe(ENOUGH_POPULATION)
+        let s = state.get();
+        expect(lengthM(s.people)).toBe(ENOUGH_POPULATION)
       })
     });
   })
@@ -380,31 +396,31 @@ describe('Proposal', () => {
       it('should be the finished phase with IQ <= 50 proposer.', () => {
         let s = state.init();
         for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
-        s.people = s.people.map(p=>{ p.age += 16; return p; });//avoid random failure
-        let proposer = s.people[0].masquerade();
+        s.people = mapM(s.people, (k,v)=>{ v.age += 16; return v; });//avoid random failure
+        let proposer = firstM(s.people).masquerade();
         proposer.intelligenceDeviation = 50;
         let proposal = s.submitProposal(proposer, ProblemTypes.NORMAL);
         expect(proposal.proposer.status).toBe(PersonalStatus.DELIBERATING);
-        expect(s.people[0].status).toBe(PersonalStatus.DELIBERATING);
+        expect(firstM(s.people).status).toBe(PersonalStatus.DELIBERATING);
         s.tick();
         expect(proposal.validate().code).toBe(ProposalPhases.FINISHED);
         expect(proposal.isFinished).toBe(true);
         expect(proposal.proposer.status).toBe(PersonalStatus.INACTIVE);
-        expect(s.people[0].status).toBe(PersonalStatus.INACTIVE);
+        expect(firstM(s.people).status).toBe(PersonalStatus.INACTIVE);
       });
       it('should be the facilitator assignment phase with IQ > 50 proposer.', () => {
         let s = state.init();
         for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
-        s.people = s.people.map(p=>{
-          p.age += 16;
-          p.masquerade();
-          return p;
+        s.people = mapM(s.people, (k,v)=>{
+          v.age += 16;
+          v.masquerade();
+          return v;
         });//avoid random failure
-        let proposer = s.people[0].masquerade();
+        let proposer = firstM(s.people).masquerade();
         proposer.intelligenceDeviation = 50.1;
         s.submitProposal(proposer, ProblemTypes.NORMAL);
         s.tick();
-        expect(s.proposals[0].validate().code).toBe(ProposalPhases.FACILITATOR_ASSIGNMENT);
+        expect(firstM(s.proposals).validate().code).toBe(ProposalPhases.FACILITATOR_ASSIGNMENT);
       });
     });
   })

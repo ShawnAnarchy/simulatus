@@ -1,5 +1,21 @@
 import * as Random from './random'
 import * as Util from './util'
+const {
+  fetchRecord,
+  squash,
+  shuffle,
+  mapM,
+  filterM,
+  firstM,
+  lastM,
+  keyM,
+  valueM,
+  lengthM,
+  uniqM,
+  sampleM
+} = Util;
+
+
 import {
   TICKING_TIME,
   POPULATION,
@@ -14,7 +30,6 @@ import {
   PARTICIPATION_THRESHOLD,
   BOTTLENECK_THRESHOLD,
   TUNING } from './const'
-let squash = Util.squash;
 
 
 
@@ -34,13 +49,13 @@ export enum StateMachineError {
 }
 
 export class StateMachine implements ClockInterface {
-  people: Array<Citizen>;
+  people: Map<string,Citizen>;
   treasury: number;
   annualRevenue: number;
   annualExpense: number;
   annualSeigniorage: number;
   annualInfrationRate: number;
-  proposals: Array<Proposal>;
+  proposals: Map<string,Proposal>;
   domains: Array<string>;
   miscellaneousAdministrations: Array<Administration>;
   AofMedia: Administration;
@@ -61,10 +76,10 @@ export class StateMachine implements ClockInterface {
 
 
   constructor(){
-    this.people = [];
+    this.people = new Map<string,Citizen>();
     this.treasury = 0;
     this.annualRevenue = 0;
-    this.proposals = [];
+    this.proposals = new Map<string,Proposal>();
     this.domains = [];
     this.miscellaneousAdministrations = [];
     this.AofMedia = new Administration();
@@ -116,11 +131,11 @@ export class StateMachine implements ClockInterface {
   }
   addCitizen(): Citizen {
     let citizen = new Citizen();
-    this.people.push(citizen);
+    this.people[citizen.id] = citizen
     return citizen;
   }
   removeCitizen(citizen){
-    this.people = this.people.filter((p,i) => p && p.id !== citizen.id )
+    delete this.people[citizen.id];
   }
   addSupremeJudge(judge){
     if (judge.status === PersonalStatus.INACTIVE) throw new Error('SupremeJudge must join the mixing.');
@@ -172,8 +187,8 @@ export class StateMachine implements ClockInterface {
     if( context.code === StateMachineError.FACILITATOR_OVERFLOW ) throw new Error(`FACILITATOR is too much.`)
 
     // TODO tick all actors
-    this.people.map(c=> c.tick() )
-    this.proposals.map(p=> p.tick() )
+    mapM(this.people, (k,v)=> v.tick() )
+    mapM(this.proposals, (k,v)=> v.tick() )
     this.miscellaneousAdministrations.map(a=> a.tick() )
     this.AofMedia.tick()
     this.AofEducation.tick()
@@ -204,7 +219,7 @@ export class StateMachine implements ClockInterface {
         code: StateMachineError.FACILITATOR_DUPLICATION,
         report: ""
       }
-    } else if(this.people.length !== Util.uniq(this.people).length){
+    } else if(lengthM(this.people) !== lengthM(uniqM(this.people))){
       return {
         code: StateMachineError.CITIZEN_DUPLICATION,
         report: ""
@@ -224,7 +239,7 @@ export class StateMachine implements ClockInterface {
   }
   submitProposal(proposer, problemType): Proposal{
     let proposal = new Proposal(proposer, problemType);
-    this.proposals.push(proposal);
+    this.proposals[proposal.id] = proposal;
     return proposal;
   }
   approveProposal(proposal){
@@ -236,14 +251,7 @@ export class StateMachine implements ClockInterface {
     //TODO: There's no tie between admin and vestedMonthlyBudget
   }
   updateProposal(proposal){
-    let pid = proposal.id;
-    this.proposals = this.proposals.map((p,i)=>{
-      if(p.id === pid){
-        return proposal;
-      } else {
-        return p;
-      }
-    });
+    this.proposals[proposal.id] = proposal;
   }
   updateProposalWithParticipants(proposal){
     this.updateProposal(proposal);
@@ -254,13 +262,7 @@ export class StateMachine implements ClockInterface {
   }
   updateCitizen(citizen){
     if(!citizen) throw new Error('citizen is null');
-    this.people = this.people.map(p=>{
-      if(p.id === citizen.id){
-        return citizen;
-      } else {
-        return p;
-      }
-    })
+    this.people[citizen.id] = citizen;
   }
   updateCRO(cro){
     if(!cro) throw new Error('cro is null');
@@ -306,15 +308,15 @@ export class StateMachine implements ClockInterface {
   }
   summary(){
     let s = state.get();
-    let population_suffrage = s.people.filter(p=> p && p.isSuffrage()).length;
-    let population_ready = s.people.filter(p=> p && p.status === PersonalStatus.CANDIDATE).length
-    let ongoingProposals = this.proposals.filter(p=>{
-      let c = p.validate().code;
+    let population_suffrage = lengthM(filterM(s.people, (k,v)=> v && v.isSuffrage()));
+    let population_ready = lengthM(filterM(s.people, (k,v)=> v && v.status === PersonalStatus.CANDIDATE));
+    let ongoingProposals = lengthM(filterM(s.proposals, (k,v)=>{
+      let c = v.validate().code;
       return c === ProposalPhases.DELIBERATION
       || c === ProposalPhases.DOMAIN_ASSIGNMENT
       || c === ProposalPhases.PROFESSIONAL_ASSIGNMENT
       || c === ProposalPhases.FINAL_JUDGE
-    }).length
+    }))
     return {
       freeRatio: Math.ceil((population_ready/population_suffrage)*100),
       population_suffrage: population_suffrage,
@@ -361,24 +363,24 @@ export let state = (() => {
       DEFAULT_DOMAINS.map(d=>s.addDomain(d))
 
       for(var i=0; i<FACILITATORS_INITIAL_HEADCCOUNT; i++){
-        let ppl = s.people.filter(p=> (p.status === PersonalStatus.CANDIDATE && p.age > 16 && p.intelligenceDeviation > 49 ));
-        if(ppl.length > 0){
-          let candidate = ppl[Random.number(0, ppl.length-1)]
+        let candidates = filterM(s.people, (k,v)=> (v.status === PersonalStatus.CANDIDATE && v.age > 16 && v.intelligenceDeviation > 49 ));
+        if(lengthM(candidates) > 0){
+          let candidate = sampleM(candidates)
           s.addFacilitator(new Facilitator(candidate))
         }
       }
       for(var i=0; i<SUPREME_JUDGES_INITIAL_HEADCCOUNT; i++){
-        let ppl = s.people.filter(p=> (p.status === PersonalStatus.CANDIDATE && p.age > 16 && p.intelligenceDeviation > 60 ));
-        if(ppl.length > 0){
-          let candidate = ppl[Random.number(0, ppl.length-1)]
+        let candidates = filterM(s.people, (k,v)=> (v.status === PersonalStatus.CANDIDATE && v.age > 16 && v.intelligenceDeviation > 60 ));
+        if(lengthM(candidates) > 0){
+          let candidate = sampleM(candidates)
           s.addSupremeJudge(new SupremeJudge(candidate))
         }
       }
       for(var i=0; i<PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN; i++){
         for(var j=0; j<s.domains.length; j++){
-          let ppl = s.people.filter(p=> (p.status === PersonalStatus.CANDIDATE && p.age > 16 && p.intelligenceDeviation > 60 ));
-          if(ppl.length > 0){
-            let candidate = ppl[Random.number(0, ppl.length-1)]
+          let candidates = filterM(s.people, (k,v)=> (v.status === PersonalStatus.CANDIDATE && v.age > 16 && v.intelligenceDeviation > 60 ));
+          if(lengthM(candidates) > 0){
+            let candidate = sampleM(candidates);
             s.addProfessional(s.domains[j], new Professional(candidate))
           }
         }
@@ -484,7 +486,7 @@ export class Proposal implements ClockInterface {
     state.get().updateProposalWithParticipants(this);
   }
 
-  tick(){
+  tick():Proposal{
     let s = state.get();
     let context = this.validate()
     switch(context.code){
@@ -538,6 +540,7 @@ export class Proposal implements ClockInterface {
         break;
     }
     this.spentDays += TICKING_TIME
+    return this;
   }
   validate(){
     if(this.spentDays === 0 && this.representatives.length === REPRESENTATIVE_HEADCOUNT && !this.isFinished) {
@@ -586,25 +589,33 @@ export class Proposal implements ClockInterface {
     }
   }
   pickRepresentatives(){
-    let shuffledPeople = Util.shuffle(
-        state.get().people.filter(p=> (p.status === PersonalStatus.CANDIDATE && 16 <= p.age) )
-    );
-    if(shuffledPeople.length < 30) {
+    let s = state.get();
+    let candidates = filterM(s.people, (k,v)=> (v.status === PersonalStatus.CANDIDATE && 16 <= v.age) );
+    if(lengthM(candidates) < 30) {
       // this.representatives = [];
       this.finishProposal();
     } else {
+      let cache = [];
       this.representatives = [...Array(this.representativeHeadcount)]
-      .map((x,i)=>{
-        let p = shuffledPeople[i]
+      .map((v,i)=>{
+        let rand = Random.number(0, lengthM(candidates)-1);
+        while(cache.includes(rand)){
+          // refresh rand until it is to be unique.
+          rand = Random.number(0, lengthM(candidates)-1);
+        }
+        cache.push(rand);
+        let p = candidates[rand];
         p.status = PersonalStatus.DELIBERATING;
-        state.get().updateCitizen(p);
+        s.updateCitizen(p);
+
         return p;
       })
     }
   }
   pickDomains(){
-    let rand = Random.number(0, state.get().domains.length-1);
-    let shuffledDomains = Util.shuffle(state.get().domains);
+    let s = state.get();
+    let rand = Random.number(0, s.domains.length-1);
+    let shuffledDomains = Util.shuffle(s.domains);
     this.domains = [...Array(rand)]
       .map((x,i)=> shuffledDomains[i] )
       
@@ -701,7 +712,7 @@ export class Citizen implements ClockInterface {
     let code = this.validate().code;
     return code === LifeStage.SUFFRAGE || code === LifeStage.WORKFORCE;
   }
-  tick(){
+  tick():Citizen{
     let s = state.get();
     let context = this.validate();
 
@@ -728,6 +739,7 @@ export class Citizen implements ClockInterface {
     
     this.age += TICKING_TIME/365
     this.validateAfter();
+    return this;
   }
   validate(){
     if (this.age > this.lifetime) {
@@ -935,17 +947,17 @@ export class Snapshot {
     let s = state.get();
     let summary = s.summary();
 
-    s.appendRecord('population', `hd${tick}`, s.people.length);
-    s.appendRecord('population_in_deliberation', `hd${tick}`, s.people.filter(p=> p.status === PersonalStatus.DELIBERATING ).length);
+    s.appendRecord('population', `hd${tick}`, lengthM(s.people));
+    s.appendRecord('population_in_deliberation', `hd${tick}`, lengthM(filterM(s.people, (k,v)=> v.status === PersonalStatus.DELIBERATING )));
     s.appendRecord('population_ready', `hd${tick}`, summary.population_ready);
     s.appendRecord('num_facilitator', `hd${tick}`, s.facilitators.length);
     s.appendRecord(`num_professional_${s.domains[0]}`, `hd${tick}`, s.professionals[s.domains[0]].length);
     s.appendRecord(`num_supremeJudge`, `hd${tick}`, s.supremeJudges.length);
-    s.appendRecord(`num_proposals`, `hd${tick}`, s.proposals.length);
+    s.appendRecord(`num_proposals`, `hd${tick}`, lengthM(s.proposals));
     s.appendRecord('population_suffrage', `hd${tick}`, summary.population_suffrage);
     s.appendRecord(`freeRatio`, `hd${tick}`, summary.freeRatio);
     s.appendRecord(`num_proposalOngoing`, `hd${tick}`, summary.ongoingProposals);
-    s.appendRecord(`num_proposalApproved`, `hd${tick}`, s.proposals.filter(p=>p.isApproved).length);
+    s.appendRecord(`num_proposalApproved`, `hd${tick}`, lengthM(filterM(s.proposals, (k,v)=>v.isApproved)));
     s.appendRecord('num_facilitator_in_deliberation', `hd${tick}`, s.facilitators.filter(p=>p.status === PersonalStatus.DELIBERATING).length);
     s.appendRecord(`num_supremeJudge_in_deliberation`, `hd${tick}`, s.supremeJudges.filter(p=>p.status === PersonalStatus.DELIBERATING).length);
   }

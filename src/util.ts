@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as childProcess from 'child_process'
 import { state } from './lib';
+import * as Random from './random'
 
 export function shuffle(array) {
   var currentIndex = array.length, temporaryValue, randomIndex;
@@ -106,7 +107,7 @@ export function uniq(array) {
   }
   return Array.from(knownElements);
 }
-export function filterM<T>(jsMapData: Map<string, T>, cb:(key:string, value: T, index:number) => void):Map<string, T>{
+export function filterM<T>(jsMapData: Map<string, T>, cb:(key:string, value: T, index:number) => boolean):Map<string, T>{
   let keys:Array<string> = Object.keys(jsMapData);
   let newMap:Map<string, T> = new Map<string, T>();
 
@@ -117,4 +118,42 @@ export function filterM<T>(jsMapData: Map<string, T>, cb:(key:string, value: T, 
   })
 
   return newMap;
+}
+export function mapM<T>(jsMapData: Map<string, T>, cb:(key:string, value: T, index:number) => T):Map<string, T>{
+  let keys:Array<string> = Object.keys(jsMapData);
+  let newMap:Map<string, T> = new Map<string, T>();
+
+  keys.map((key:string,index:number)=>{
+    let value:T = cb(key, jsMapData[key], index);
+    newMap[key] = value;
+    return value;
+  })
+
+  return newMap;
+}
+export function firstM<T>(jsMapData: Map<string, T>): T{
+  let keys:Array<string> = Object.keys(jsMapData);
+  return jsMapData[keys[0]];
+}
+export function lastM<T>(jsMapData: Map<string, T>): T{
+  let keys:Array<string> = Object.keys(jsMapData);
+  return jsMapData[keys[keys.length-1]];
+}
+export function keyM<T>(jsMapData: Map<string, T>):string{
+  return Object.keys(jsMapData)[0];
+}
+export function valueM<T>(jsMapData: Map<string, T>):T{
+  return jsMapData[keyM(jsMapData)];
+}
+export function lengthM<T>(jsMapData: Map<string, T>):number{
+  return Object.keys(jsMapData).length;
+}
+export function uniqM<T>(jsMapData: Map<string, T>):Map<string, T>{
+  return filterM(jsMapData, (k,v)=> !v );
+}
+export function sampleM<T>(jsMapData: Map<string, T>): T{
+  let kv = filterM(jsMapData, (k,v,i)=>{
+    return i === Random.number(0, lengthM(jsMapData)-1);
+  })
+  return valueM(kv);
 }
