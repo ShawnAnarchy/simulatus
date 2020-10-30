@@ -37,8 +37,10 @@
   },
   "type": "module",
   "scripts": {
-    "start": "rollup -c && node dist/index.js && NODE_ENV=frontend rollup -c && node distfront/server.js",
-    "test": "jest"
+    "start": "npm run build:main && npm run build:frontend",
+    "test": "jest",
+    "build:main": "rollup -c && node dist/index.js",
+    "build:frontend": "NODE_ENV=frontend rollup -c && node distfront/server.js"
   },
   "repository": {
     "type": "git",

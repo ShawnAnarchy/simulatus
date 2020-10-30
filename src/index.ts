@@ -21,14 +21,35 @@ let writeRecords = Util.writeRecords;
   console.log(`ticking started...`) 
   for(var i=0; i<SIMULATE_FOR_DAYS*2; i++){
     let halfdays = (i+1)/2;
+    s.lap('main_a');
     s.tick();
+    s.lap('main_b');
     Snapshot.save(halfdays);
+    s.lap('main_c');
 
-    if((i/2)%1 === 0){
-      let summary = s.summary();
-      console.log(`day${i/2} with freeRatio=${summary.freeRatio}%  ${summary.ongoingProposals}props  bottleneck:${summary.bottleneck}`) 
-
+    let tempo;
+    if(POPULATION > 20000){
+      tempo = 0.5;
+    } else if (POPULATION > 10000) {
+      tempo = 1;
+    } else if (POPULATION > 5000) {
+      tempo = 7;
+    } else {
+      tempo = 30;
     }
+
+    s.lap('main_c');
+    if((i/2)%tempo === 0){
+      let summary = s.summary();
+      s.lap('main_e');
+      console.log(`day${i/2} with freeRatio=${summary.freeRatio}%  ${summary.ongoingProposals}props  bottleneck:${summary.bottleneck}`) 
+      s.lap('main_f');
+      writeRecords();
+      s.lap('main_g');
+      trace(s.bottleneck, "bottleneck");
+      s.lap('main_h');
+    }
+    s.lap('main_d');
   }
   console.log(`ticking finished!`)
 
