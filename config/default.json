@@ -1,16 +1,17 @@
 {
   "global": {
     "tickingTime": 0.5,
-    "simulateForDays": 365
+    "simulateForDays": 365,
+    "participationThreshold": 99
   },
   "nation": {
-    "population": 5000,
+    "population": 250000,
     "domains": ["finance", "military", "publicSafety", "physics"]
   },
   "deliberation": {
     "representativeHeadcount": 30,
-    "facilitatorsInitialHeadcount": 500,
-    "professionalsInitialHeadcountPerDomain": 300,
+    "facilitatorsInitialHeadcount": 75,
+    "professionalsInitialHeadcountPerDomain": 50,
     "supremeJudgesInitialHeadcount": 5
   },
   "citizen": {

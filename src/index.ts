@@ -18,18 +18,19 @@ let writeRecords = Util.writeRecords;
   let s = state.get();
   state.setup(POPULATION);
 
-  trace(s);
-
   console.log(`ticking started...`) 
   for(var i=0; i<SIMULATE_FOR_DAYS*2; i++){
     let halfdays = (i+1)/2;
     s.tick();
     Snapshot.save(halfdays);
 
-    if((i/2)%30 === 0) console.log(`day${i/2} with ${s.proposals.length} proposals`) 
+    if((i/2)%1 === 0){
+      let summary = s.summary();
+      console.log(`day${i/2} with freeRatio=${summary.freeRatio}%  ${summary.ongoingProposals}props`) 
+    }
   }
   console.log(`ticking finished!`)
 
   writeRecords();
-  trace(s);
+  trace(s.debugger);
 })()
