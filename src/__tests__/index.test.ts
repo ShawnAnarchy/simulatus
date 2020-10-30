@@ -55,17 +55,6 @@ describe('StateMachine', () => {
       expect(Util.uniq(s.people.map(p=>p.id)).length).toBe(ENOUGH_POPULATION)
     })
   })
-  describe('multi-round tests', () => {
-    it('should have consistent pupulation after tickings.', () => {
-      let s = state.init();
-      state.setup(POPULATION);
-      expect(s.people.length+s.deadPeople.length).toBe(POPULATION)
-      for(var i=0; i<SIMULATE_FOR_DAYS*2; i++){
-        s.tick();
-      }
-      expect(s.people.length+s.deadPeople.length).toBe(POPULATION)
-    })
-  })
   describe('addFacilitator', () => {
     it('should be free as facilitator but cannot be a candidate of other roles.', () => {
       let s = state.get();

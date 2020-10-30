@@ -12,7 +12,8 @@ import {
   REPRESENTATIVE_HEADCOUNT,
   DEFAULT_DOMAINS,
   PARTICIPATION_THRESHOLD,
-  BOTTLENECK_THRESHOLD } from './const'
+  BOTTLENECK_THRESHOLD,
+  TUNING } from './const'
 let squash = Util.squash;
 
 
@@ -87,6 +88,7 @@ export class StateMachine implements ClockInterface {
     this.lastLap = 0;
   }
   lap(label){
+    if(TUNING) return;
     let key = `${this.debugCount}_${label}`;
     let value = Date.now();
 

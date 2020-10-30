@@ -3,15 +3,16 @@
     "tickingTime": 0.5,
     "simulateForDays": 365,
     "participationThreshold": 0,
-    "bottleneckThreshold": 100
+    "bottleneckThreshold": 100,
+    "tuning": false
   },
   "nation": {
-    "population": 5000,
+    "population": 2500,
     "domains": ["finance", "military", "publicSafety", "physics"]
   },
   "deliberation": {
     "representativeHeadcount": 30,
-    "facilitatorsInitialHeadcount": 75,
+    "facilitatorsInitialHeadcount": 30,
     "professionalsInitialHeadcountPerDomain": 50,
     "supremeJudgesInitialHeadcount": 5
   },
