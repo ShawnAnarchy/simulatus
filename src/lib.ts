@@ -11,7 +11,8 @@ import {
   LOWERBOUND,
   REPRESENTATIVE_HEADCOUNT,
   DEFAULT_DOMAINS,
-  PARTICIPATION_THRESHOLD } from './const'
+  PARTICIPATION_THRESHOLD,
+  BOTTLENECK_THRESHOLD } from './const'
 let squash = Util.squash;
 
 
@@ -55,6 +56,7 @@ export class StateMachine implements ClockInterface {
   records: Map<string, Map<string, number>>;
   debugger: Map<string, number>;
   debugCount: number;
+  bottleneck: Map<string, number>;
 
 
   constructor(){
@@ -79,9 +81,23 @@ export class StateMachine implements ClockInterface {
     this.debugCount = 0;
     this.debugger = new Map<string, number>();
     this.lap('start');
+    this.bottleneck = new Map<string, number>();
   }
   lap(label){
-    this.debugger[`${this.debugCount}_${label}`] = Date.now();
+    let key = `${this.debugCount}_${label}`;
+    let value = Date.now();
+    this.debugger[key] = value;
+
+
+    // let keys = Object.keys(this.debugger)
+    // let latestLaps = [];
+    // for(var i=0; i<10; i++){
+    //   latestLaps.push(this.debugger[keys.length-i]);
+    // }
+    // let diff = Math.max(...latestLaps) - Math.min(...latestLaps);
+    // if(diff > BOTTLENECK_THRESHOLD){
+    //   this.bottleneck[key] = value;
+    // }  
     this.debugCount++;
   }
 
@@ -166,11 +182,8 @@ export class StateMachine implements ClockInterface {
     if( context.code === StateMachineError.FACILITATOR_OVERFLOW ) throw new Error(`FACILITATOR is too much.`)
 
     // TODO tick all actors
-    this.lap('ticking');
     this.people.map(c=> c.tick() )
-    this.lap('people_tick');
     this.proposals.map(p=> p.tick() )
-    this.lap('proposals_tick');
     this.miscellaneousAdministrations.map(a=> a.tick() )
     this.AofMedia.tick()
     this.AofEducation.tick()
@@ -180,9 +193,7 @@ export class StateMachine implements ClockInterface {
     this.AofKYC.tick()
     this.AofTEEManager.tick()
     this.supremeJudges.map(a=> a.tick() )
-    this.lap('many_ticks');
     this.facilitators.map(a=> a.tick() )
-    this.lap('facilitators_ticks');
     this.domains.map(d=>{
       this.professionals[d].map(a=> a.tick() )
     })
@@ -481,23 +492,30 @@ export class Proposal implements ClockInterface {
   }
 
   tick(){
+    let s = state.get();
+    // s.lap('prp_valbf');
     let context = this.validate()
+    // s.lap('prp_valaf');
     switch(context.code){
       case ProposalPhases.INITIAL_JUDGE:
         if(this.proposer.intelligenceDeviation > 50){
           // just tick if proposal is pseudo-reasonable
         } else {
           this.finishProposal()
+          // s.lap('prp_finishProposal');
         }
         break;
       case ProposalPhases.FACILITATOR_ASSIGNMENT:
         this.pickFacilitator();
+        // s.lap('prp_pickFacilitator');
         break;
       case ProposalPhases.DOMAIN_ASSIGNMENT:
         this.pickDomains()
+        // s.lap('prp_pickDomains');
         break;
       case ProposalPhases.PROFESSIONAL_ASSIGNMENT:
         this.pickProfessionals()
+        // s.lap('prp_pickProfessionals');
         break;
       case ProposalPhases.DELIBERATION:
         if(!this.isFinished){
@@ -506,15 +524,19 @@ export class Proposal implements ClockInterface {
           let dailyEffect = (avgTeacherintelligenceDeviation - 50)/this.durationDays
           this.representatives = this.representatives.map(r=> r.affectByDeliberation(dailyEffect) )
           this.modificationRequests();
+          // s.lap('prp_modificationRequests');
         }
         break;
       case ProposalPhases.FINAL_JUDGE:
         let forCount = this.quorum();
         if(forCount > this.representatives.length/2){
           state.get().approveProposal(this);
+          // s.lap('prp_approveProposal');
           this.finishProposal();
+          // s.lap('prp_apfinishProposal1');
         } else {
           this.finishProposal();
+          // s.lap('prp_nonapfinishProposal2');
         }
         break;
       case ProposalPhases.HEADCOUNT_EXCEEDED:
@@ -688,11 +710,16 @@ export class Citizen implements ClockInterface {
     return code === LifeStage.SUFFRAGE || code === LifeStage.WORKFORCE;
   }
   tick(){
+    let s = state.get();
     let context = this.validate();
 
+    // s.lap('ppl_removeCitizen_bf');
     if(context.code === LifeStage.DEATH){
       state.get().removeCitizen(this)
     }
+    // s.lap('ppl_removeCitizen_af');
+
+
 
     if(
         (context.code === LifeStage.SUFFRAGE || context.code === LifeStage.WORKFORCE)
@@ -700,15 +727,21 @@ export class Citizen implements ClockInterface {
       ){
       this.masquerade();      
     }
+    // s.lap('ppl_masquerade');
 
     this.earn(context)
+    // s.lap('ppl_earn');
     this.payTax(context)
+    // s.lap('ppl_payTax');
     this.getWelfare(context)
+    // s.lap('ppl_getWelfare');
     this.activePoliticalAction(context)
+    // s.lap('ppl_pAct');
     this.passivePoliticalAction(context)
     
     this.age += TICKING_TIME/365
     this.validateAfter();
+    // s.lap('ppl_vAf');
   }
   validate(){
     if (this.age > this.lifetime) {

@@ -2,10 +2,11 @@
   "global": {
     "tickingTime": 0.5,
     "simulateForDays": 365,
-    "participationThreshold": 99
+    "participationThreshold": 90,
+    "bottleneckThreshold": 250
   },
   "nation": {
-    "population": 250000,
+    "population": 2500,
     "domains": ["finance", "military", "publicSafety", "physics"]
   },
   "deliberation": {

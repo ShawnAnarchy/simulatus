@@ -21,19 +21,14 @@ export function shuffle(array) {
   return array;
 }
 
-export function trace(...args:any[]):void {
+export function trace(arg:any, filename:string?):void {
   let str:string = "";
-  if (args.length > 1) {
-    str = args.map(o=> stringify(o) ).join(", ");
-    str = "{" + str + "}"
-  } else if (args.length === 1) {
-    str = stringify(args[0])
-  }
+  str = stringify(arg)
   if(str === 'undefined' || str === undefined ) throw new Error('stringify failed')
+  filename = (filename) ? filename : `${Date.now()}`;
 
-  let now = Date.now()
-  fs.writeFileSync(`./logs/${now}`,  str);
-  childProcess.execSync(`cat logs/${now} | jq . > logs/${now}.json && rm logs/${now}`)
+  fs.writeFileSync(`logs/${filename}`,  str);
+  childProcess.execSync(`cat logs/${filename} | jq . > logs/${filename}.json && rm logs/${filename}`)
 }
 
 export function writeRecords(){

@@ -32,5 +32,5 @@ let writeRecords = Util.writeRecords;
   console.log(`ticking finished!`)
 
   writeRecords();
-  trace(s.debugger);
+  trace(s.bottleneck, "bottleneck");
 })()

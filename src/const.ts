@@ -2,6 +2,7 @@ import * as config from 'config';
 
 export const TICKING_TIME = config.get('global.tickingTime')
 export const PARTICIPATION_THRESHOLD = config.get('global.participationThreshold');
+export const BOTTLENECK_THRESHOLD = config.get('global.bottleneckThreshold');
 export const POPULATION = config.get('nation.population');
 export const DEFAULT_DOMAINS = config.get('nation.domains');
 export const SIMULATE_FOR_DAYS = config.get('global.simulateForDays');
