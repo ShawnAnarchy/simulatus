@@ -40,14 +40,14 @@ let writeRecords = Util.writeRecords;
 
     s.lap('main_c');
     if((i/2)%tempo === 0){
-      let summary = s.summary();
+      let summary = s.summaryStore;
       s.lap('main_e');
       console.log(`day${i/2} with freeRatio=${summary.freeRatio}%  ${summary.ongoingProposals}props  bottleneck:${summary.bottleneck}`) 
-      s.lap('main_f');
-      writeRecords();
-      s.lap('main_g');
-      trace(s.bottleneck, "bottleneck");
-      s.lap('main_h');
+      // s.lap('main_f');
+      // writeRecords();
+      // s.lap('main_g');
+      // trace(s.bottleneck, "bottleneck");
+      // s.lap('main_h');
     }
     s.lap('main_d');
   }

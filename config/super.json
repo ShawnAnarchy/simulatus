@@ -1,14 +1,14 @@
 {
   "global": {
     "tickingTime": 0.5,
-    "simulateForDays": 2,
+    "simulateForDays": 365,
     "participationThreshold": 99,
-    "bottleneckThreshold": 70,
-    "tuning": true
+    "bottleneckThreshold": 100,
+    "tuning": false
   },
   "nation": {
-    "population": 64000,
-    "domains": ["finance"]
+    "population": 250000,
+    "domains": ["finance", "military", "publicSafety", "physics"]
   },
   "deliberation": {
     "representativeHeadcount": 30,

@@ -15,7 +15,25 @@ const ENOUGH_POPULATION = 200;
 
 import * as fs from 'fs';
 import * as Random from '../random';
-import * as Util from '../util';
+
+import {
+  fetchRecord,
+  deleteRecordAll,
+  squash,
+  shuffle,
+  stringify,
+  uniq,
+  mapM,
+  filterM,
+  firstM,
+  lastM,
+  keyM,
+  valueM,
+  lengthM,
+  squashM,
+  sampleM
+} from '../util'
+
 import {
   state,
   Snapshot,
@@ -27,18 +45,6 @@ import {
   ProposalPhases,
   PersonalStatus
 } from '../lib';
-  
-const {
-  fetchRecord,
-  mapM,
-  filterM,
-  firstM,
-  lastM,
-  keyM,
-  valueM,
-  lengthM,
-  uniqM
-} = Util;
 
 const context = describe;
 
@@ -66,7 +72,6 @@ describe('StateMachine', () => {
       let s = state.init();
       for(var i=0; i<ENOUGH_POPULATION; i++) s.addCitizen().masquerade();
       expect(lengthM(s.people)).toBe(ENOUGH_POPULATION)
-      expect(lengthM(uniqM(mapM(s.people, (k,v)=>v)))).toBe(ENOUGH_POPULATION)
     })
   })
   describe('addFacilitator', () => {
@@ -109,7 +114,7 @@ describe('Snapshot', () => {
       beforeAll(()=>{
         let s = state.init();
         DEFAULT_DOMAINS.map(d=> s.addDomain(d) );
-        Util.deleteRecordAll();
+        deleteRecordAll();
       });
       it('should add a record to the memory storage for population', () => {
         let s = state.get();
@@ -322,10 +327,6 @@ describe('Proposal', () => {
         expect(validationResult.code).toBe(ProposalPhases.PROFESSIONAL_ASSIGNMENT);
         expect(proposal.representatives.filter(r=> r.status === PersonalStatus.DELIBERATING ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
-      it('No id confliction after a proposal', ()=>{
-        let s = state.get();
-        expect(lengthM(uniqM(mapM(s.people, (k,v)=>v)))).toBe(ENOUGH_POPULATION)
-      })
     });
     context('ProposalPhases.DELIBERATION', () => {
       it('should be true.', () => {
@@ -340,10 +341,6 @@ describe('Proposal', () => {
         expect(lengthM(s.people)).toBe(ENOUGH_POPULATION);
         expect(proposal.representatives.filter(r=> r.status === PersonalStatus.DELIBERATING ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
-      it('No id confliction after a proposal', ()=>{
-        let s = state.get();
-        expect(lengthM(uniqM(mapM(s.people, (k,v)=>v)))).toBe(ENOUGH_POPULATION)
-      })
     });
     context('ProposalPhases.FINAL_JUDGE', () => {
       it('should be true.', () => {
@@ -354,10 +351,6 @@ describe('Proposal', () => {
         expect(validationResult.code).toBe(ProposalPhases.FINAL_JUDGE);
         expect(proposal.representatives.filter(r=> r.status === PersonalStatus.DELIBERATING ).length).toBe(REPRESENTATIVE_HEADCOUNT);
       });
-      it('No id confliction after a proposal', ()=>{
-        let s = state.get();
-        expect(lengthM(uniqM(mapM(s.people, (k,v)=>v)))).toBe(ENOUGH_POPULATION)
-      })
     });
     context('ProposalPhases.FINISHED', () => {
       it('should be true and a miscellaneousAdministration should be added.', () => {
@@ -376,10 +369,6 @@ describe('Proposal', () => {
         expect(s.miscellaneousAdministrations.length).toBeGreaterThan(0);
         expect(proposal.representatives.filter(r=> r.status === PersonalStatus.DELIBERATING ).length).toBe(0);
       });
-      it('No id confliction after a proposal', ()=>{
-        let s = state.get();
-        expect(lengthM(uniqM(mapM(s.people, (k,v)=>v)))).toBe(ENOUGH_POPULATION)
-      })
       it('should be consistent regarding population', ()=>{
         let s = state.get();
         expect(lengthM(s.people)).toBe(ENOUGH_POPULATION)

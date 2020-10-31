@@ -156,13 +156,25 @@ export function valueM<T>(jsMapData: Map<string, T>):T{
 export function lengthM<T>(jsMapData: Map<string, T>):number{
   return Object.keys(jsMapData).length;
 }
-export function uniqM<T>(jsMapData: Map<string, T>):Map<string, T>{
+export function squashM<T>(jsMapData: Map<string, T>):Map<string, T>{
   return filterM(jsMapData, (k,v)=> !!v );
 }
-export function sampleM<T>(jsMapData: Map<string, T>): T{
-  let rand = Random.number(0, lengthM(jsMapData)-1);
-  let kv = filterM(jsMapData, (k,v,i)=>{
-    return i === rand;
-  })
-  return firstM(kv)
+export function sampleM<T>(jsMapData: Map<string, T>, rand=0): T{
+  if(rand === 0) {
+    rand = Random.number(0, lengthM(jsMapData)-1);
+  }
+  let key = Object.keys(jsMapData)[rand];
+  let value = jsMapData[key];
+  return value;
+}
+export function multiSampleM<T>(jsMapData: Map<string, T>, n, rands=[0]): Array<T>{
+  let len = lengthM(jsMapData) - 1;
+  if(rands.length === 1 && rands[0] === 0) {
+    for(var i = 0; i < n; i++){
+      rands.push(Random.number(0, len));
+    }
+  }
+  let keys = rands.map(rand=> Object.keys(jsMapData)[rand] );
+  let values = keys.map(key => jsMapData[key] );
+  return values;
 }
