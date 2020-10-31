@@ -209,10 +209,6 @@ export class StateMachine implements ClockInterface {
     if( context.code === StateMachineError.FACILITATOR_DUPLICATION ) throw new Error(`FACILITATOR is inconsistently duplicated.`)
     if( context.code === StateMachineError.FACILITATOR_OVERFLOW ) throw new Error(`FACILITATOR is too much.`)
 
-    this.lap('sttmcn_smbf');
-    this.summaryStore = this.summary();
-    this.lap('sttmcn_smaf');
-
     // TODO tick all actors
     this.lap('sttmcn_a');
     mapM(this.people, (k,v)=> v.tick() )
@@ -378,6 +374,27 @@ export class StateMachine implements ClockInterface {
       bottleneck: stringify(s.bottleneck)
     }
   }
+  pickCandidates(n, nextPersonalState:PersonalStatus, isCRO=false){
+    let candidates = [];
+    let cache = [];
+
+    this.lap('pckCands_a');
+    let now = Date.now();
+    while(candidates.length < n && cache.length < POPULATION*(100-this.summaryStore.freeRatio)/100){
+      let candidate = this.sampleCandidate();
+      if( !cache.includes(candidate.id) && candidate.isCandidate() ) {
+        candidate.status = nextPersonalState;
+        isCRO ? this.updateCRO(candidate) : this.updateCitizen(candidate);
+        candidates.push(candidate);
+      }
+      cache.push(candidate.id);
+    }
+
+    let s = state.get();
+    console.log(`${s.tickCount}:${n} ${s.summaryStore.freeRatio}% ${POPULATION*(100-this.summaryStore.freeRatio)/100}bsPop ${cache.length}caches ${s.summaryStore.ongoingProposals}oprps ${lengthM(s.proposals)}prps ${Date.now() - now}ms4pck ${candidates.length}cnds`);
+    this.lap('pckCands_b');
+    return candidates;
+  }
 
 }
 export let state = (() => {
@@ -411,34 +428,43 @@ export let state = (() => {
       for(var i=0; i<population; i++){
         let citizen = s.addCitizen()
         if(i%10 !== 0) citizen.masquerade();//10% non mixing
-        if(i&10000 === 0) console.log(`${i}citizens created!`);
+        if(i%100000 === 0) console.log(`${i}citizens created!`);
       }
+      console.log('citizen created.')
+      s.summaryStore = s.summary();
 
       DEFAULT_DOMAINS.map(d=>s.addDomain(d))
+      console.log('domain created.')
 
-      for(var i=0; i<FACILITATORS_INITIAL_HEADCCOUNT; i++){
-        let candidates = filterM(s.people, (k,v)=> (v.status === PersonalStatus.CANDIDATE && v.age >= 16 && v.intelligenceDeviation > 49 ));
-        if(lengthM(candidates) > 0){
-          let candidate = sampleM(candidates)
-          s.addFacilitator(new Facilitator(candidate))
-        }
+      s.pickCandidates(
+        FACILITATORS_INITIAL_HEADCCOUNT,
+        PersonalStatus.CANDIDATE,
+        true
+      ).map(v=>{
+        s.addFacilitator(new Facilitator(v));
+      })
+      console.log('Facilitator created.')
+
+      s.pickCandidates(
+        SUPREME_JUDGES_INITIAL_HEADCCOUNT,
+        PersonalStatus.CANDIDATE,
+        true
+      ).map(v=>{
+        s.addSupremeJudge(new SupremeJudge(v));
+      });
+      console.log('SupremeJudge created.')
+
+      for(var j=0; j<s.domains.length; j++){
+        s.pickCandidates(
+          PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN,
+          PersonalStatus.CANDIDATE,
+          true
+        ).map(v=>{
+          s.addProfessional(s.domains[j], new Professional(v));
+        })
       }
-      for(var i=0; i<SUPREME_JUDGES_INITIAL_HEADCCOUNT; i++){
-        let candidates = filterM(s.people, (k,v)=> (v.status === PersonalStatus.CANDIDATE && v.age >= 16 && v.intelligenceDeviation > 60 ));
-        if(lengthM(candidates) > 0){
-          let candidate = sampleM(candidates)
-          s.addSupremeJudge(new SupremeJudge(candidate))
-        }
-      }
-      for(var i=0; i<PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN; i++){
-        for(var j=0; j<s.domains.length; j++){
-          let candidates = filterM(s.people, (k,v)=> (v.status === PersonalStatus.CANDIDATE && v.age >= 16 && v.intelligenceDeviation > 60 ));
-          if(lengthM(candidates) > 0){
-            let candidate = sampleM(candidates);
-            s.addProfessional(s.domains[j], new Professional(candidate))
-          }
-        }
-      }
+      console.log('Professional created.')
+
       return s;
     }
     
@@ -556,6 +582,8 @@ export class Proposal implements ClockInterface {
   tick():Proposal{
     let s = state.get();
     let context = this.validate()
+    let now = Date.now();
+
     switch(context.code){
       case ProposalPhases.INITIAL_JUDGE:
         if(this.proposer.intelligenceDeviation > 50){
@@ -606,6 +634,8 @@ export class Proposal implements ClockInterface {
         if(!this.isFinished) this.finishProposal();
         break;
     }
+
+    console.log(`${s.tickCount}: ${context.code} ${s.summaryStore.freeRatio}% ${POPULATION*(100-s.summaryStore.freeRatio)/100}bsPop ${s.summaryStore.ongoingProposals}oprps ${lengthM(s.proposals)}prps ${Date.now() - now}ms4prptick ${this.spentDays}spdys ${this.representatives.length}reps isFinished:${this.isFinished}`);
     this.spentDays += TICKING_TIME
     return this;
   }
@@ -657,26 +687,7 @@ export class Proposal implements ClockInterface {
   }
   pickRepresentatives(){
     let s = state.get();
-    if(s.summaryStore.freeRatio < PARTICIPATION_THRESHOLD) this.finishProposal();
-
-    let candidates = [];
-    let cache = [];
-
-    s.lap('pckRep_a');
-    let now = Date.now();
-    let busyPopulation = POPULATION*(100-s.summaryStore.freeRatio)/100;
-    while(candidates.length < this.representativeHeadcount && cache.length < busyPopulation){
-      let candidate = s.sampleCandidate();
-      if( !cache.includes(candidate.id) && candidate.isCandidate() ) {
-        candidate.status = PersonalStatus.DELIBERATING;
-        s.updateCitizen(candidate);
-        candidates.push(candidate);
-      }
-      cache.push(candidate.id);
-    }
-    // console.log(`${s.tickCount}: ${s.summaryStore.freeRatio}% ${busyPopulation}bsPop ${cache.length}caches ${s.summaryStore.ongoingProposals}oprps ${lengthM(s.proposals)}prps ${Date.now() - now}ms4pck`);
-    s.lap('pckRep_b');
-    this.representatives = candidates;
+    this.representatives = s.pickCandidates(this.representativeHeadcount, PersonalStatus.DELIBERATING);
   }
   pickDomains(){
     let s = state.get();
@@ -941,8 +952,7 @@ export class Citizen implements ClockInterface {
           s.summaryStore.freeRatio > PARTICIPATION_THRESHOLD
           && this.annualSalary/12 > 5000 || this.intelligenceDeviation > 55)
           && Random.number(0, 365/100) === 0
-          && this.age >= 16
-          && this.status === PersonalStatus.CANDIDATE
+          && this.isCandidate()
         ) {
           s.lap('actvPolAc_b');
           this.submitProposal();

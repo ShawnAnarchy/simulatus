@@ -7,7 +7,7 @@
     "tuning": false
   },
   "nation": {
-    "population": 250000,
+    "population": 300000,
     "domains": ["finance", "military", "publicSafety", "physics"]
   },
   "deliberation": {
