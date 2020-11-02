@@ -32,7 +32,8 @@ import {
   DEFAULT_DOMAINS,
   PARTICIPATION_THRESHOLD,
   BOTTLENECK_THRESHOLD,
-  TUNING } from './const'
+  TUNING,
+  DELIBERATION_HEADCOUNT } from './const'
 
 
 
@@ -221,22 +222,24 @@ export class StateMachine implements ClockInterface {
     let now = Date.now();
     this.tickCount++;
     let context = this.validate();
+    this.summaryStore = this.summary();
 
-    this.lap('sttmcn_vldt_a');
-    this.lap('sttmcn_vldt_b');
     if( !context.code ) throw new Error(`DAO4N Error: Assumption viorated. ${context.report}`)
     if( context.code === StateMachineError.FACILITATOR_DUPLICATION ) throw new Error(`FACILITATOR is inconsistently duplicated.`)
     if( context.code === StateMachineError.FACILITATOR_OVERFLOW ) throw new Error(`FACILITATOR is too much.`)
 
-    // TODO tick all actors
-    this.lap('sttmcn_a');
-    mapM(this.people, (k,v,i)=>{
-      this.timeout(now);
+    let availableRatio = 1-PARTICIPATION_THRESHOLD/100;
+    let proposalInTick = Math.ceil(
+      (this.summaryStore.population_ready*availableRatio)/DELIBERATION_HEADCOUNT
+    );
+    let proposers = this.pickCandidates(proposalInTick, PersonalStatus.CANDIDATE);
+    proposers.map(v=> v.submitProposal() );
+    let inactivePeople = filterM(this.people, (k,v)=>{
       v.tick();
-      return v;
+      return v.status === PersonalStatus.INACTIVE;
     })
+    if(this.tickCount%(90*2)===0) mapM(inactivePeople, (k,v)=> v.masquerade() )
 
-    this.lap('sttmcn_b');
     this.proposals = filterM(this.proposals, (k,v)=>{
       if(!v) return false;
       let proposal = v.tick();
@@ -278,7 +281,7 @@ export class StateMachine implements ClockInterface {
   timeout(now){
     let diff = Date.now() - now;
     this.timeoutCallCount++;
-    if(diff > 30000) throw new Error(`This tick took long. diff=${diff} count=${this.timeoutCallCount}`);
+    if(diff > 60000) throw new Error(`This tick took long. diff=${diff} count=${this.timeoutCallCount}`);
   }
   validate(){
     // TODO check CROs' max headcount
@@ -367,7 +370,7 @@ export class StateMachine implements ClockInterface {
     let freeRatioObj = {suffrages:0, readies:0};
     mapM(s.people, (k,v)=>{
       let isSuffrage = (v && v.isSuffrage());
-      let isReady = (v && v.status === PersonalStatus.CANDIDATE);
+      let isReady = (v && v.isCandidate());
       if (isSuffrage) freeRatioObj.suffrages += 1;
       if (isReady) freeRatioObj.readies += 1;
       return v;
@@ -384,8 +387,7 @@ export class StateMachine implements ClockInterface {
       || c === ProposalPhases.PROFESSIONAL_ASSIGNMENT
       || c === ProposalPhases.FINAL_JUDGE
     }))
-    let population_in_deliberation = ongoingProposals*(1+1+REPRESENTATIVE_HEADCOUNT+DEFAULT_DOMAINS.length);
-
+    let population_in_deliberation = ongoingProposals*(DELIBERATION_HEADCOUNT);
     return {
       freeRatio: Math.ceil((population_ready/population_suffrage)*100),
       population_suffrage: population_suffrage,
@@ -452,9 +454,8 @@ export let state = (() => {
     setup: (population:number)=>{
       let s = _get();
       for(var i=1; i<=population; i++){
-        let citizen = s.addCitizen()
+        let citizen = s.addCitizen();
         citizen.status = PersonalStatus.CANDIDATE;
-        // if(i%10 !== 0) citizen.masquerade();//10% non mixing
         if(i%10000 === 0) console.log(`${i}citizens created!`);
       }
       console.log('citizen created.')
@@ -823,7 +824,7 @@ export class Citizen implements ClockInterface {
     this.biologicallyCanBePregnant = !!Random.number(0, 1)
     let lifetimeRand = Random.number(65, 85) + Random.number(0, 35) - Random.number(0, 65);
     this.lifetime = lifetimeRand > 48 ? lifetimeRand : Random.number(0,1) ? lifetimeRand : 48;
-    this.age = this.lifetime - Random.number(0.5, this.lifetime);
+    this.age = Random.number(5, this.lifetime*0.7);
     this.status = PersonalStatus.INACTIVE;
   }
   masquerade(){
@@ -861,7 +862,6 @@ export class Citizen implements ClockInterface {
     this.earn(context)
     this.payTax(context)
     this.getWelfare(context)
-    this.activePoliticalAction(context)
     this.passivePoliticalAction(context)
     s.lap('ppl_activePoliticalAction');
 
@@ -1017,9 +1017,7 @@ export class Citizen implements ClockInterface {
     let s = state.get();
     s.lap('ctznSubPrp_a');
     if(s.summaryStore.freeRatio > PARTICIPATION_THRESHOLD){
-      s.lap('ctznSubPrp_c');
       s.submitProposal(this, ProblemTypes.NORMAL)
-      s.lap('ctznSubPrp_d');
       this.status = PersonalStatus.DELIBERATING;
     }
     s.lap('ctznSubPrp_b');

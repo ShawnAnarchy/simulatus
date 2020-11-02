@@ -3,8 +3,8 @@
     "tickingTime": 0.5,
     "simulateForDays": 365,
     "participationThreshold": 99,
-    "bottleneckThreshold": 100,
-    "tuning": true
+    "bottleneckThreshold": 1000,
+    "tuning": false
   },
   "nation": {
     "population": 64000,

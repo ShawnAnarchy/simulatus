@@ -8,7 +8,9 @@ import {
   UPPERBOUND,
   LOWERBOUND,
   REPRESENTATIVE_HEADCOUNT,
-  DEFAULT_DOMAINS } from '../const';
+  DEFAULT_DOMAINS,
+  TUNING,
+  DELIBERATION_HEADCOUNT } from './const'
 
 const TEST_DOMAIN = 'test_domain';
 const ENOUGH_POPULATION = 1000;

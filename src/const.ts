@@ -13,3 +13,4 @@ export const SUPREME_JUDGES_INITIAL_HEADCCOUNT = config.get('deliberation.suprem
 export const REPRESENTATIVE_HEADCOUNT = config.get('deliberation.representativeHeadcount');
 export const UPPERBOUND = config.get('citizen.derivationUpperBound');
 export const LOWERBOUND = config.get('citizen.derivationLowerBound');
+export const DELIBERATION_HEADCOUNT = 1+1+REPRESENTATIVE_HEADCOUNT+DEFAULT_DOMAINS.length;

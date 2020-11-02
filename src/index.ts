@@ -11,7 +11,8 @@ import {
   DEFAULT_DOMAINS,
   PARTICIPATION_THRESHOLD,
   BOTTLENECK_THRESHOLD,
-  TUNING } from './const'
+  TUNING,
+  DELIBERATION_HEADCOUNT } from './const'
 
 import * as Random from './random';
 
@@ -50,16 +51,7 @@ import { state, Snapshot, Facilitator, Professional, SupremeJudge } from './lib'
     Snapshot.save(halfdays);
     s.lap('main_c');
 
-    let tempo;
-    if(POPULATION > 20000){
-      tempo = 0.5;
-    } else if (POPULATION > 10000) {
-      tempo = 1;
-    } else if (POPULATION > 5000) {
-      tempo = 7;
-    } else {
-      tempo = 30;
-    }
+    let tempo = 1;
 
     s.lap('main_c');
     if((i/2)%tempo === 0){
