@@ -80,6 +80,7 @@ export class StateMachine implements ClockInterface {
   lastLapKey: string;
   lastLapValue: number;
   sampleCandidateCache: Array<number>;
+  timeoutCallCount: number;
 
 
   constructor(){
@@ -113,6 +114,7 @@ export class StateMachine implements ClockInterface {
     this.bottleneck = new Map<string, number>();
     this.lastLapKey = "";
     this.lastLapValue = 0;
+    this.timeoutCallCount = 0;
   }
   lap(label){
     if(!TUNING) return;
@@ -274,7 +276,9 @@ export class StateMachine implements ClockInterface {
     this.timeout(now);
   }
   timeout(now){
-    if(Date.now() - now > 2000) throw new Error(`This tick took long.`);
+    let diff = Date.now() - now;
+    this.timeoutCallCount++;
+    if(diff > 30000) throw new Error(`This tick took long. diff=${diff} count=${this.timeoutCallCount}`);
   }
   validate(){
     // TODO check CROs' max headcount
@@ -373,6 +377,7 @@ export class StateMachine implements ClockInterface {
     let population_suffrage = freeRatioObj.suffrages;
     let population_ready = freeRatioObj.readies;
     let ongoingProposals = lengthM(filterM(s.proposals, (k,v)=>{
+      if(!v) return false;
       let c = v.validate().code;
       return c === ProposalPhases.DELIBERATION
       || c === ProposalPhases.DOMAIN_ASSIGNMENT
@@ -448,8 +453,9 @@ export let state = (() => {
       let s = _get();
       for(var i=1; i<=population; i++){
         let citizen = s.addCitizen()
-        if(i%10 !== 0) citizen.masquerade();//10% non mixing
-        if(i%100000 === 0) console.log(`${i}citizens created!`);
+        citizen.status = PersonalStatus.CANDIDATE;
+        // if(i%10 !== 0) citizen.masquerade();//10% non mixing
+        if(i%10000 === 0) console.log(`${i}citizens created!`);
       }
       console.log('citizen created.')
       s.summaryStore = s.summary();
