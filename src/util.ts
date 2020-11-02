@@ -144,7 +144,7 @@ export function lastM<T>(jsMapData: Map<string, T>): T{
   if(keys.length > 0){
     return jsMapData[keys[keys.length-1]];
   } else {
-    throw new Error('firstM for the empty map.');
+    throw new Error('lastM for the empty map.');
   }
 }
 export function keyM<T>(jsMapData: Map<string, T>):string{

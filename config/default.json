@@ -2,18 +2,18 @@
   "global": {
     "tickingTime": 0.5,
     "simulateForDays": 365,
-    "participationThreshold": 99,
-    "bottleneckThreshold": 100,
+    "participationThreshold": 70,
+    "bottleneckThreshold": 1,
     "tuning": false
   },
   "nation": {
-    "population": 10000,
+    "population": 2500,
     "domains": ["military", "publicSafety"]
   },
   "deliberation": {
     "representativeHeadcount": 30,
-    "facilitatorsInitialHeadcount": 75,
-    "professionalsInitialHeadcountPerDomain": 50,
+    "facilitatorsInitialHeadcount": 30,
+    "professionalsInitialHeadcountPerDomain": 20,
     "supremeJudgesInitialHeadcount": 5
   },
   "citizen": {

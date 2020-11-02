@@ -12,8 +12,8 @@
   },
   "deliberation": {
     "representativeHeadcount": 30,
-    "facilitatorsInitialHeadcount": 75,
-    "professionalsInitialHeadcountPerDomain": 50,
+    "facilitatorsInitialHeadcount": 50,
+    "professionalsInitialHeadcountPerDomain": 10,
     "supremeJudgesInitialHeadcount": 5
   },
   "citizen": {
