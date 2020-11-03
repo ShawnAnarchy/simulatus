@@ -448,7 +448,7 @@ export let state = (() => {
         citizen.status = PersonalStatus.CANDIDATE;
         if( citizen.isSuffrage() ) s.suffrageCitizens++;
         if( citizen.isCandidate() ) s.prepairedCitizens++;
-        if(i%(10**(`${POPULATION}`.length-1)) === 0) console.log(`${i}citizens created!`);
+        if(i%(10**(`${POPULATION}`.length-2)) === 0) console.log(`${i}citizens created!`);
       }
       console.log('citizen created.');
       s.summaryStore = s.summary();
@@ -571,7 +571,7 @@ export class Proposal implements ClockInterface {
   getDurationDays(){
     switch (this.problemType) {
       case ProblemTypes.ASSIGNMENT:
-        return 14;
+        return 7;
       case ProblemTypes.DISMISSAL:
         return 3;
       case ProblemTypes.NORMAL:
@@ -579,7 +579,7 @@ export class Proposal implements ClockInterface {
       case ProblemTypes.HEAVY:
         return 60;
       case ProblemTypes.VARIABLE_UPDATE:
-        return 14;
+        return 30;
       }
   }
   finishProposal(){
@@ -979,7 +979,14 @@ export class Citizen implements ClockInterface {
     let s = state.get();
     s.lap('ctznSubPrp_a');
     if(s.summaryStore.freeRatio > PARTICIPATION_THRESHOLD){
-      s.submitProposal(this, ProblemTypes.NORMAL)
+      let problemType = [
+        ProblemTypes.NORMAL,
+        ProblemTypes.ASSIGNMENT,
+        ProblemTypes.DISMISSAL,
+        ProblemTypes.VARIABLE_UPDATE,
+        ProblemTypes.HEAVY
+      ][Random.number(0, 4]
+      s.submitProposal(this, problemType)
       this.status = PersonalStatus.DELIBERATING;
     }
     s.lap('ctznSubPrp_b');

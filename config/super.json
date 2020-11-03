@@ -3,12 +3,12 @@
     "tickingTime": 0.5,
     "simulateForDays": 365,
     "participationThreshold": 99.9,
-    "mixingTerm": 10,
+    "mixingTerm": 1,
     "bottleneckThreshold": 1000,
     "tuning": false
   },
   "nation": {
-    "population": 15000000,
+    "population": 7000000,
     "domains": ["finance", "military", "publicSafety", "physics", "surveillance", "education", "media", "TEE", "KYC", "infrastructure"]
   },
   "deliberation": {
