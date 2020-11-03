@@ -985,8 +985,8 @@ export class Citizen implements ClockInterface {
         ProblemTypes.DISMISSAL,
         ProblemTypes.VARIABLE_UPDATE,
         ProblemTypes.HEAVY
-      ][Random.number(0, 4]
-      s.submitProposal(this, problemType)
+      ][Random.number(0, 4)];
+      s.submitProposal(this, problemType);
       this.status = PersonalStatus.DELIBERATING;
     }
     s.lap('ctznSubPrp_b');

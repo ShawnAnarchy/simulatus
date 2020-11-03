@@ -3,6 +3,22 @@ import * as childProcess from 'child_process'
 import { state } from './lib';
 import * as Random from './random'
 
+import {
+  TICKING_TIME,
+  POPULATION,
+  SIMULATE_FOR_DAYS,
+  FACILITATORS_INITIAL_HEADCCOUNT,
+  PROFESSIONALS_INITIAL_HEADCCOUNT_PER_DOMAIN,
+  SUPREME_JUDGES_INITIAL_HEADCCOUNT,
+  UPPERBOUND,
+  LOWERBOUND,
+  REPRESENTATIVE_HEADCOUNT,
+  DEFAULT_DOMAINS,
+  PARTICIPATION_THRESHOLD,
+  BOTTLENECK_THRESHOLD,
+  TUNING,
+  DELIBERATION_HEADCOUNT } from './const'
+
 export function shuffle(array) {
   var currentIndex = array.length, temporaryValue, randomIndex;
 

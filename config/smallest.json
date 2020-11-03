@@ -2,20 +2,20 @@
   "global": {
     "tickingTime": 0.5,
     "simulateForDays": 365,
-    "participationThreshold": 98.5,
+    "participationThreshold": 0,
     "mixingTerm": 1,
     "bottleneckThreshold": 1000,
     "tuning": false
   },
   "nation": {
-    "population": 32600,
-    "domains": ["military", "publicSafety"]
+    "population": 326,
+    "domains": ["enginering", "society"]
   },
   "deliberation": {
-    "representativeHeadcount": 30,
+    "representativeHeadcount": 7,
     "facilitatorsInitialHeadcount": 15,
-    "professionalsInitialHeadcountPerDomain": 5,
-    "supremeJudgesInitialHeadcount": 5
+    "professionalsInitialHeadcountPerDomain": 1,
+    "supremeJudgesInitialHeadcount": 3
   },
   "citizen": {
     "derivationUpperBound": 85,
