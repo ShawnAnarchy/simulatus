@@ -3,6 +3,7 @@
     "tickingTime": 0.5,
     "simulateForDays": 365,
     "participationThreshold": 60,
+    "mixingTerm": 10,
     "bottleneckThreshold": 100,
     "tuning": false
   },

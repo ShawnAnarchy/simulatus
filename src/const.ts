@@ -14,3 +14,4 @@ export const REPRESENTATIVE_HEADCOUNT = config.get('deliberation.representativeH
 export const UPPERBOUND = config.get('citizen.derivationUpperBound');
 export const LOWERBOUND = config.get('citizen.derivationLowerBound');
 export const DELIBERATION_HEADCOUNT = 1+1+REPRESENTATIVE_HEADCOUNT+DEFAULT_DOMAINS.length;
+export const MIXING_TERM = config.get('global.mixingTerm')

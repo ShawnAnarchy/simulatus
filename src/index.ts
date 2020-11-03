@@ -45,22 +45,14 @@ import { state, Snapshot, Facilitator, Professional, SupremeJudge } from './lib'
   for(var i=0; i<SIMULATE_FOR_DAYS*2; i++){
     let halfdays = (i+1)/2;
     s.summaryStore = s.summary();
-    s.lap('main_a');
     s.tick();
-    s.lap('main_b');
     Snapshot.save(halfdays);
-    s.lap('main_c');
-
     let tempo = 1;
-
-    s.lap('main_c');
     if((i/2)%tempo === 0){
       s.tickReport(i);
-
       // writeRecords();
       // trace(s.bottleneck, "bottleneck");
     }
-    s.lap('main_d');
   }
   console.log(`ticking finished!`)
 

@@ -98,7 +98,7 @@ export function stringify(circ){
 }
 
 export function squash(arr){
-  return arr.filter(function(val) { return val !== null; }).join(", ")
+  return arr.filter(v=>v);
 }
 export function uniq(array) {
   const knownElements = new Set();
@@ -165,6 +165,15 @@ export function sampleM<T>(jsMapData: Map<string, T>, rand=0): T{
   }
   let key = Object.keys(jsMapData)[rand];
   let value = jsMapData[key];
+  return value;
+}
+export function samplePeople(rand=0): Citizen{
+  let s = state.get();
+  if(rand === 0) {
+    rand = Random.number(0, POPULATION-1);
+  }
+  let key = s.peopleKeys[rand];
+  let value = s.people[key];
   return value;
 }
 export function multiSampleM<T>(jsMapData: Map<string, T>, n, rands=[0]): Array<T>{

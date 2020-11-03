@@ -2,19 +2,20 @@
   "global": {
     "tickingTime": 0.5,
     "simulateForDays": 365,
-    "participationThreshold": 99,
-    "bottleneckThreshold": 100,
+    "participationThreshold": 99.9,
+    "mixingTerm": 10,
+    "bottleneckThreshold": 1000,
     "tuning": false
   },
   "nation": {
-    "population": 300000,
-    "domains": ["finance", "military", "publicSafety", "physics"]
+    "population": 15000000,
+    "domains": ["finance", "military", "publicSafety", "physics", "surveillance", "education", "media", "TEE", "KYC", "infrastructure"]
   },
   "deliberation": {
     "representativeHeadcount": 30,
-    "facilitatorsInitialHeadcount": 50,
+    "facilitatorsInitialHeadcount": 150,
     "professionalsInitialHeadcountPerDomain": 10,
-    "supremeJudgesInitialHeadcount": 5
+    "supremeJudgesInitialHeadcount": 15
   },
   "citizen": {
     "derivationUpperBound": 85,
